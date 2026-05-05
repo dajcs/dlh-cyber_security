@@ -1,2 +1,2 @@
 #!/bin/bash
-tr -dc [:alnum:] < /dev/urandom | head -c 20
+head -c "$1" /dev/urandom | base64 | tr -d '\n' | head -c "$1"; echo
