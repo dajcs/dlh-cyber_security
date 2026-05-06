@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
+# Displays the PID of this script - $$ expands to the PID of the running Bash script
 echo $$
