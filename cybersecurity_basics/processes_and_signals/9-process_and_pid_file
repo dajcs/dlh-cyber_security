@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Creates a PID file and handles signals
+
+echo $$ > /tmp/myscript.pid
+
+cleanup()
+{
+    rm -f /tmp/myscript.pid
+}
+
+sigterm_handler()
+{
+    echo "I hate the kill command"
+    cleanup
+    exit 0
+}
+
+sigquit_handler()
+{
+    cleanup
+    exit 0
+}
+
+sigint_handler()
+{
+    echo "Y U no love me?!"
+}
+
+trap sigterm_handler SIGTERM
+trap sigquit_handler SIGQUIT
+trap sigint_handler SIGINT
+
+while true
+do
+    echo "To infinity and beyond"
+    sleep 2
+done
