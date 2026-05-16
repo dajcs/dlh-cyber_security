@@ -9,3 +9,4 @@
 - 4-network_services.sh # list all network services listening on the system
 - 5-audit_system.sh # audit the system for security vulnerabilities
 - 6-capture_analyze.sh # capture and analyze network traffic
+- 7-scan.sh # scan for website subdomains
