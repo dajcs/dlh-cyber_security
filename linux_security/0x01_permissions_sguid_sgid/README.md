@@ -3,3 +3,4 @@
 ## 0x01 Permissions, SUID, SGID
 
 - 0-add_user.sh
+- 1-add_group.sh
