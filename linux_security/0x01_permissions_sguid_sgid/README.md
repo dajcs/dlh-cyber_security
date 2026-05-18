@@ -8,3 +8,4 @@
 - 3-find_files.sh
 - 4-find_suid.sh
 - 5-find_sgid.sh
+- 6-check_files.sh
