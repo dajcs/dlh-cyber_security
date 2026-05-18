@@ -1,2 +1,2 @@
 #!/bin/bash
-find "$1" -type f -size 0 -exec ls -l {} \;
+find "$1" -type f -empty -exec ls -l {} \;
