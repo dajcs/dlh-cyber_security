@@ -11,3 +11,4 @@
 - 6-check_files.sh
 - 7-file_read.sh
 - 8-change_user.sh
+- 9-empty_file.sh
