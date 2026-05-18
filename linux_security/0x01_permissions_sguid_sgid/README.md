@@ -6,3 +6,4 @@
 - 1-add_group.sh
 - 2-sudo_nopass.sh
 - 3-find_files.sh
+- 4-find_suid.sh
