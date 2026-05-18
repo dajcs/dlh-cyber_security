@@ -7,3 +7,4 @@
 - 2-sudo_nopass.sh
 - 3-find_files.sh
 - 4-find_suid.sh
+- 5-find_sgid.sh
