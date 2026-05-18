@@ -4,3 +4,4 @@
 
 - 0-add_user.sh
 - 1-add_group.sh
+- 2-sudo_nopass.sh
