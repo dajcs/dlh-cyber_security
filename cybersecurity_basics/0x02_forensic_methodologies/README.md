@@ -1,3 +1,4 @@
 - 0-mystery.txt
 - 1-location.txt
 - 2-intruder_intent.txt
+- 3-vulnerability_type.txt
