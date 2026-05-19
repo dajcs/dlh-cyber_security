@@ -2,3 +2,4 @@
 - 1-location.txt
 - 2-intruder_intent.txt
 - 3-vulnerability_type.txt
+- 4-attack_method.txt
