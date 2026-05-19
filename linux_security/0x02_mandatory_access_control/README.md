@@ -4,3 +4,4 @@
 - 3-add_port.sh
 - 4-list_user.sh
 - 5-add_selinux.sh
+- 6-list_booleans.sh
