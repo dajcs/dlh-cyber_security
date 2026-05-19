@@ -3,3 +3,4 @@
 - 2-list_http.sh
 - 3-add_port.sh
 - 4-list_user.sh
+- 5-add_selinux.sh
