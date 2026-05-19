@@ -5,3 +5,4 @@
 - 4-list_user.sh
 - 5-add_selinux.sh
 - 6-list_booleans.sh
+- 7-set_sendmail.sh
