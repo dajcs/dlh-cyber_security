@@ -7,3 +7,4 @@
 - 4-wordlist_john.sh
 - 5-windows_john.sh
 - 6-crack_john.sh
+- 7-crack_hashcat.sh
