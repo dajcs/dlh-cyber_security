@@ -5,3 +5,4 @@
 - 2-md5.sh
 - 3-password_hash.sh
 - 4-wordlist_john.sh
+- 5-windows_john.sh
