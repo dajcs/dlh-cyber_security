@@ -6,3 +6,4 @@
 - 3-password_hash.sh
 - 4-wordlist_john.sh
 - 5-windows_john.sh
+- 6-crack_john.sh
