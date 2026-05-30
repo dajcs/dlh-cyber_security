@@ -9,3 +9,4 @@
 - 6-crack_john.sh
 - 7-crack_hashcat.sh
 - 8-combination_hashcat.sh
+- 9-attack_hashcat.sh
