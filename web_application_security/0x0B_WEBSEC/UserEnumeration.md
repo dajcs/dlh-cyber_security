@@ -320,5 +320,9 @@ done
 ### 3.5 Store the Flag in File `0-flag.txt`
 
 ```bash
+echo 66800c78ea0eb4515fd4df0aba022243  > 0-flag.txt
+
+cat 0-flag.txt                                                                  
+# 66800c78ea0eb4515fd4df0aba022243
 
 ```
