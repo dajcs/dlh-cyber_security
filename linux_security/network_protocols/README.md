@@ -4,3 +4,4 @@
 1. 1-firewall.sh
 2. 2-harden.sh
 3. 3-identify.sh
+4. 4-audit.sh
