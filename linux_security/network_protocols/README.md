@@ -8,3 +8,4 @@
 5. 5-sshd_config
 6. 6-nfs.sh
 7. 7-snmp.sh
+8. 8-smtp.sh
