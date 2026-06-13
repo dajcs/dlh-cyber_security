@@ -5,3 +5,4 @@
 2. 2-harden.sh
 3. 3-identify.sh
 4. 4-audit.sh
+5. 5-sshd_config
