@@ -7,3 +7,4 @@
 4. 4-audit.sh
 5. 5-sshd_config
 6. 6-nfs.sh
+7. 7-snmp.sh
