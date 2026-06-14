@@ -1,12 +1,13 @@
 # Network Protocols: Auditing and Securing
 
-0. 0-iptables.sh
-1. 1-firewall.sh
-2. 2-harden.sh
-3. 3-identify.sh
-4. 4-audit.sh
-5. 5-sshd_config
-6. 6-nfs.sh
-7. 7-snmp.sh
-8. 8-smtp.sh
-9. 9-tls_version.txt
+- 0-iptables.sh
+- 1-firewall.sh
+- 2-harden.sh
+- 3-identify.sh
+- 4-audit.sh
+- 5-sshd_config
+- 6-nfs.sh
+- 7-snmp.sh
+- 8-smtp.sh
+- 9-tls_version.txt
+- 10-chipher.sh
