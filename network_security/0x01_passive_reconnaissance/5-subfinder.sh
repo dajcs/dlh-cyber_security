@@ -1,2 +1,2 @@
 #!/bin/bash
-subfinder -d $1 -silent -active -ip | tee $1.txt | cut -d',' -f1
+subfinder -silent -d $1 -o $1.txt -active -ip
