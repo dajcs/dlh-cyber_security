@@ -12,3 +12,4 @@
 - 9-tls_version.txt
 - 10-chipher.sh
 - 11-http_https.txt
+- 12-dos.sh
