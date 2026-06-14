@@ -5,3 +5,4 @@
 - 2-mx_record.sh
 - 3-txt_record.sh
 - 4-dig_all.sh
+- 5-subfinder.sh
