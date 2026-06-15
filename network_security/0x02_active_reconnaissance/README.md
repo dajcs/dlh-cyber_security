@@ -306,7 +306,7 @@ sqlmap -u "http://active.hbtn/product/1" -D "active.hbtn" --tables --batch
 
 On local terminal store the result
 ```bash
-echo "4" > 4-tables_count.txt
+echo "4" > 4-tables.txt
 ```
 
 Verify result.
