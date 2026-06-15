@@ -399,9 +399,19 @@ curl -s -b cookies.txt http://active.hbtn/orders
 #     </footer>
 #     
 #     <!-- Dont forget to delete this comment please
-           Holberton Sec Lab - f39ee8f104e2222c280206a72874f43d -->
+#           Holberton Sec Lab - f39ee8f104e2222c280206a72874f43d -->
 #     
 # </body>
 # </html>
+```
+
+There are 2 flag-like strings.
+Try to save them on local terminal and verify the result.
+```bash
+# try the flag in <div class="home">
+echo 9e2150471de4c6b6d70c24a3b9d782de >101-flag.txt
+```
+
+... and 100%
 
 
