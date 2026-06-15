@@ -39,7 +39,7 @@ nmap -p- active.hbtn
 ## verify result
 ```
 
-## Task 2 - inspect website
+## Task 1 - inspect website
 
 ```bash
 
@@ -56,3 +56,25 @@ curl -I http://active.hbtn
 ## on localhost save "webserver_name webserver_version" to 1-webserver.txt
 ## echo "nginx 1.18.0" > 1-webserver.txt
 ## verify result
+```
+
+## Task 2: 100-flag.txt
+
+```bash
+curl http://active.hbtn
+# ...
+#     <footer>
+#         Copyright &copy; 2023 Holberton School Inc, All rights reserved.
+#     </footer>
+#     
+#     <!-- Dont forget to delete this comment please
+#          Holberton Sec Lab - f39ee8f104e2222c280206a72874f43d -->
+#     
+# </body>
+# </html>
+
+## on localhost save the flag to 100-flag.txt
+## echo f39ee8f104e2222c280206a72874f43d > 100-flag.txt
+## verify result
+```
+
