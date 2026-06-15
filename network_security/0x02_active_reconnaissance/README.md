@@ -19,7 +19,40 @@ ping 10.42.23.23
 # install nmap
 apt update && apt install -y nmap
 
+# add active.hbtn to /etc/hosts
+echo "10.42.23.23 active.hbtn" >> /etc/hosts
 
+# scan all ports
+nmap -p- active.hbtn
+# Starting Nmap 7.80 ( https://nmap.org ) at 2026-06-15 19:32 UTC
+# Nmap scan report for active.hbtn (10.42.23.23)
+# Host is up (0.00060s latency).
+# Not shown: 65534 closed ports
+# PORT   STATE SERVICE
+# 80/tcp open  http
+# MAC Address: 0A:C4:AE:24:CC:17 (Unknown)
+# 
+# Nmap done: 1 IP address (1 host up) scanned in 2.34 seconds
 
+## on localhost save the port 80 to file 0-ports.txt
+## echo 80 >0-ports.txt
+## verify result
+```
 
-- 0-ports.txt
+## Task 2 - inspect website
+
+```bash
+
+# get the HTTP header response
+curl -I http://active.hbtn
+# HTTP/1.1 200 OK
+# Server: nginx/1.18.0
+# Date: Mon, 15 Jun 2026 19:47:38 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 4154
+# Connection: keep-alive
+# Vary: Cookie
+
+## on localhost save "webserver_name webserver_version" to 1-webserver.txt
+## echo "nginx 1.18.0" > 1-webserver.txt
+## verify result
