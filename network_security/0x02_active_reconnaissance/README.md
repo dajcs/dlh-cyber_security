@@ -78,3 +78,49 @@ curl http://active.hbtn
 ## verify result
 ```
 
+## Task 3: put vulnerable pages in `2-injectable.txt`
+
+```bash
+
+# browse site, search for links, identify vulnerable page
+curl -s http://active.hbtn | grep -oE 'href="[^"]+"'
+# href="/static/css/style.css"
+# href="/static/css/all.css"
+# href="/static/css/products.css"
+# href="/static/css/home.css"
+# href="/"
+# href="/products"
+# href="/orders"
+# href="/contact"
+# href="/login"
+# href="/product/1"
+# href="/product/2"
+# href="/product/3"
+# href="/product/4"
+# href="/product/5"
+# href="/product/6"
+# href="/product/7"
+# href="/product/8"
+# href="/product/9"
+# href="/product/10"
+```
+
+Suspicious: `/product`. 
+The other links are all parameter-free static destinations. 
+- `/products` (plural) is the catalog listing — it shows all products, takes no input, so there's nothing to inject into. 
+- `/contact` and `/login` are forms
+- `/` is the homepage. 
+
+None of these look up a single record by an ID we control.
+
+`/product/<id>` is different. Every one of those links — `/product/1`, `/product/2`, … `/product/10` — is the same endpoint with a number on the end. That number is a parameter we supply, and the server almost certainly uses it to fetch one row from a database, something like:
+```sql
+SELECT * FROM products WHERE id = <id>
+```
+If that `<id>` gets dropped straight into the query without sanitization, we control part of the SQL — that's the injectable surface.
+
+```bash
+## on local terminal
+echo "/product" > 2-injectable.txt
+## verify result
+```
