@@ -6,3 +6,4 @@
 - 3-txt_record.sh
 - 4-dig_all.sh
 - 5-subfinder.sh
+- holbertonschool_report.md
