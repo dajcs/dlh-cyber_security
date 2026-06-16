@@ -415,3 +415,68 @@ echo 9e2150471de4c6b6d70c24a3b9d782de >101-flag.txt
 ... and 100%
 
 
+## Task 6 - admin login page > 5-hidden_dir.txt
+
+- New `ubuntu` server ip: `10.42.143.120`
+- New `cyber_netsec_0x02` ip: `10.42.5.103`
+
+
+```bash
+# ssh login to ubuntu
+ssh -p 13294 root@ssh.cod-eu-west-3.hbtn.io
+# Password: 317f04d776734065bfc8908bb97e3610
+
+
+# install gobuster
+sudo apt update
+sudo apt install gobuster -y
+
+
+# download wordlist
+curl -L \
+  https://raw.githubusercontent.com/daviddias/node-dirbuster/master/lists/directory-list-2.3-small.txt \
+  -o directory-list-2.3-small.txt
+
+
+# add active.hbtn (`cyber_netsec_0x02` ip: `10.42.5.103`) to /etc/hosts
+echo "10.42.5.103 active.hbtn" >> /etc/hosts
+# verify
+cat /etc/hosts
+
+
+# go bust the directory (-s: allowed http codes)
+gobuster \
+  -m dir \
+  -u http://active.hbtn \
+  -w directory-list-2.3-small.txt \
+  -s 200,204,301,307,401,403
+
+# =====================================================
+# Gobuster v2.0.1              OJ Reeves (@TheColonial)
+# =====================================================
+# [+] Mode         : dir
+# [+] Url/Domain   : http://active.hbtn/
+# [+] Threads      : 10
+# [+] Wordlist     : directory-list-2.3-small.txt
+# [+] Status codes : 200,204,301,307,401,403
+# [+] Timeout      : 10s
+# =====================================================
+# 2026/06/16 18:11:13 Starting gobuster
+# =====================================================
+# /contact (Status: 200)
+# /products (Status: 200)
+# /login (Status: 200)
+# /admin (Status: 200)
+# Progress: 31336 / 87665 (35.75%)
+# =====================================================
+# 2026/06/16 18:21:36 Finished
+# =====================================================
+
+
+## in a local terminal save the result (/admin)
+echo "/admin" > 5-hidden_dir.txt
+cat 5-hidden_dir.txt
+## /admin
+## verify result with grader
+
+
