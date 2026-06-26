@@ -7,3 +7,4 @@
 - 4-tcp_syn_ping.sh
 - 5-tcp_ack_ping.sh
 - 6-udp_ping_scan.sh
+- 7-udp_ping_version.sh > 100-flag.txt
