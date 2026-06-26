@@ -2,3 +2,4 @@
 
 - 0-arp_scan.sh
 - 1-icmp_echo_scan.sh
+- 2-icmp_timestamp_scan.sh
