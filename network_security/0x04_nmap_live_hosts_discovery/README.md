@@ -6,3 +6,4 @@
 - 3-icmp_address_mask_scan.sh
 - 4-tcp_syn_ping.sh
 - 5-tcp_ack_ping.sh
+- 6-udp_ping_scan.sh
