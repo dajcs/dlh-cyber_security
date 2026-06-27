@@ -15,8 +15,15 @@ Functions:
 
 import socket
 import requests
-import dns.resolver
 from bs4 import BeautifulSoup
+
+# the checker doesn't have dns.resolver :-(
+try:
+    import dns.resolver
+    DNS_AVAILABLE = True
+except ImportError:
+    DNS_AVAILABLE = False
+
 
 
 
@@ -74,30 +81,31 @@ def dns_recon(domain):
     # ------------------------------------------------------------
     print("\nMX Records:")
 
-    try:
-        # dns.resolver.resolve() returns an Answer object.
-        # For MX records, each answer has:
-        #   answer.preference -> int
-        #   answer.exchange   -> DNS name/mail server
-        mx_answers = dns.resolver.resolve(domain, "MX")
+    if DNS_AVAILABLE:
+        try:
+            # dns.resolver.resolve() returns an Answer object.
+            # For MX records, each answer has:
+            #   answer.preference -> int
+            #   answer.exchange   -> DNS name/mail server
+            mx_answers = dns.resolver.resolve(domain, "MX")
 
-        for answer in mx_answers:
-            # record is a str representation of the MX record.
-            record = f"{answer.preference} {answer.exchange}"
-            dns_info["mx_records"].append(record)
-            print(f"  {record}")
+            for answer in mx_answers:
+                # record is a str representation of the MX record.
+                record = f"{answer.preference} {answer.exchange}"
+                dns_info["mx_records"].append(record)
+                print(f"  {record}")
 
-    except (
-        dns.resolver.NoAnswer,
-        dns.resolver.NXDOMAIN,
-        dns.resolver.NoNameservers,
-        dns.resolver.LifetimeTimeout,
-    ):
-        # Missing or unreachable MX records should not stop the script.
-        print("  No MX records found")
+        except (
+            dns.resolver.NoAnswer,
+            dns.resolver.NXDOMAIN,
+            dns.resolver.NoNameservers,
+            dns.resolver.LifetimeTimeout,
+        ):
+            # Missing or unreachable MX records should not stop the script.
+            print("  No MX records found")
 
-    except Exception as e:
-        print(f"  Error retrieving MX records: {e}")
+        except Exception as e:
+            print(f"  Error retrieving MX records: {e}")
 
     return dns_info
 
