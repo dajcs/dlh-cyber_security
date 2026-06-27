@@ -163,3 +163,11 @@ There is one TCP SYN packet to the port 80
 - put `{"source_ip": "192.168.1.100", "http_port": 80}` in the textbox
 - \ "Submit answer"
 - result: `Flag: 97914afe006c7292c693a2298ea9b153`
+
+```bash
+echo -n 97914afe006c7292c693a2298ea9b153 > 0-flag.txt
+
+# trust but verify
+cat 0-flag.txt
+# 97914afe006c7292c693a2298ea9b153
+```
