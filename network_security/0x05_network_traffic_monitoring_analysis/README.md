@@ -16,3 +16,4 @@
 ## [0. Basic Packet Analysis](task1_bpa.md)
 ## [1. HTTP Traffic Analysis](task2_hta.md)
 ## [2. DNS Query Analysis](task3_dqa.md)
+## [3. TCP Connection Analysis](task4_tca.md)
