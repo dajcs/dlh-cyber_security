@@ -18,3 +18,4 @@
 ## [2. DNS Query Analysis](task3_dqa.md)
 ## [3. TCP Connection Analysis](task4_tca.md)
 ## [4. Advanced Filtering](task5_af.md)
+## [5. TCP Stream Reconstruction](task6_tsr.md)
