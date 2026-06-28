@@ -1,4 +1,4 @@
-## 1. Download the PCAP file task4-tcp-analysis.pcap associated with this task.
+## 1. Download the PCAP file task6-tcp-stream-reconstruction.pcap associated with this task.
 
 - click on [pcaps/task6-tcp-stream-reconstruction.pcap](https://web-80-221-173.cod-eu-west-3.hbtn.io/api/assets/pcaps/task6-tcp-stream-reconstruction.pcap)
 

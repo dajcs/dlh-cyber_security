@@ -19,3 +19,4 @@
 ## [3. TCP Connection Analysis](task4_tca.md)
 ## [4. Advanced Filtering](task5_af.md)
 ## [5. TCP Stream Reconstruction](task6_tsr.md)
+## [6. Malicious Traffic Detection](task7_mtd.md)
