@@ -454,4 +454,18 @@ Identify which input field in the profile edit page is vulnerable to Cross-Site 
   
   cat 4-vuln.txt
   ```
-- commit 
+- commit - run verification - didn't accept.
+- it turned out that exactly this time was timing out my cyber sandbox :-(
+- update `/etc/hosts` with new ip and repeating only last step
+- wasn't enough
+- I've clicked on previous 3 "like" links then changed `f_name`: I've got only flag 1/2
+- Then I've entered the `"><script>alert('XSS')</script>` into `bio` and finally I've got and alert `XSS`
+- new try with vulnerability `bio`:
+
+  ```bash
+  echo bio > 4-vuln.txt
+  
+  cat 4-vuln.txt
+
+  git commit -am "4-vuln.txt - bio"
+  ```
