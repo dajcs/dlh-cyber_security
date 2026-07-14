@@ -48,13 +48,13 @@ ssh -p 13554 root@ssh.cod-eu-west-3.hbtn.io
 add `cyber_websec_0x01`'s ip to `/etc/hosts` as `web0x01.hbtn`
 
 ```bash
-echo 10.42.218.230 web0x01.hbtn' >> /etc/hosts
+echo '10.42.218.230 web0x01.hbtn' >> /etc/hosts
 ```
 
-### 1.3 local PC add `web0x01.hbtn` to `/etc/hosts`
+### 1.3 local PC add `web0x01.hbtn` to `/etc/hosts` with localhost ip
 
 ```bash
-sudo bash -c "echo '10.42.36.192 web0x01.hbtn' >> /etc/hosts"
+sudo bash -c "echo '127.0.0.1 web0x01.hbtn' >> /etc/hosts"
 ```
 We need this because the cyber websec site expects the `web0x01.hbtn` hostname.
 
@@ -181,7 +181,7 @@ echo -n eyd1c2VybmFtZSc6ICd5b3NyaScsICdwYXNzd29yZF9oYXNoJzogJ0R6NThOaTRQT3hGcktt
 # {'username': 'yosri', 'password_hash': 'Dz58Ni4POxFrKm8YCDlyLis8aysRGBEmHg=='} 
 ```
 
-We got a username and in the beginning we got a hint to use the previous task to debug the password.
+We got a username and in the beginning of the exercise we got a hint to use the previous task to debug the password.
 
 ```bash
 ./1-xor_decoder.sh Dz58Ni4POxFrKm8YCDlyLis8aysRGBEmHg==
@@ -193,7 +193,19 @@ Now we know user and password.
 - We press the logout button, arriving to `http://web0x01.hbtn:8080/a2/crypto_encoding_failure/login`
 - entering `yosri`:`Pa#iqPdN4u0GWf-qtc4tNGNyA`
 - getting flag: `4343ff5ad0978b8d4d23aec625591f15`
-- save flage:
+
+Alternatively we can get the flag with curl:
+```bash
+curl 'http://web0x01.hbtn:8080/api/a2/crypto_encoding_failure/login' \
+  -X POST \
+  -H 'content-type: application/json' \
+  -d '{"username":"yosri","password":"Pa#iqPdN4u0GWf-qtc4tNGNyA"}'
+
+{"message":"Crypto Cracked!\nFLAG:\n4343ff5ad0978b8d4d23aec625591f15","status":"success"}
+```
+
+
+- save flag:
 ```bash
 echo 4343ff5ad0978b8d4d23aec625591f15 > 2-flag.txt
 
@@ -201,3 +213,176 @@ cat 2-flag.txt
 ```
 
 - commit & verify
+
+
+
+## Task 2. (A3:2021) - Injection [Stored XSS] - part 1/3
+
+This set of tasks is designed to mimic the famous `Samy worm`, which propagated across MySpace in 2005 by exploiting Cross-Site Scripting (XSS) vulnerabilities.
+
+### Identifying Profiles to Follow
+
+The first task is to identify three specific profiles within our web application that you need to follow. These profiles are crucial for the next steps of this exercise.
+
+**Instructions**:
+
+1. Navigate and Capture Requests:
+   - Begin by exploring the web application, paying close attention to the network requests and responses.
+   - You can use browser developer tools (F12) to monitor these interactions.
+
+2. Identify Profile IDs:
+   - Look for requests that return user information.
+   - Within these responses, identify three specific profile IDs that you are instructed to follow.
+
+3. Follow the Profiles:
+   - Once you have identified the profile IDs, navigate to each profile: http://[MACHINE-IP]/a3/xss_stored/profile/[PROFILE-ID].
+   - Follow each profile by clicking on the heart icon or the designated follow button on their profile page.
+
+4. Catch the Flag:
+   - Go back to your profile to find your waiting Flag ⛳️.
+
+
+<!--
+### 2.1 start sandbox `cyber_websec_0x01`
+
+- hostname: `web-0-251-155.cod-eu-west-3.hbtn.io`
+- ip: `10.42.251.155`
+
+
+### 2.2 Ubuntu sandbox
+
+ssh login
+
+```bash
+ssh -p 12290 root@ssh.cod-eu-west-3.hbtn.io
+# Password: bed316fafc34473c880e14822800322c
+```
+
+
+add `cyber_websec_0x01`'s ip to `/etc/hosts` as `web0x01.hbtn`
+
+```bash
+echo '10.42.251.155 web0x01.hbtn' >> /etc/hosts
+```
+verify the `/etc/hosts` on the ubuntu, delete the eventual extra lines, this should be the output:
+
+```bash
+cat /etc/hosts
+127.0.0.1 localhost
+10.42.251.155 web0x01.hbtn
+```
+
+
+### 2.3 local PC add `web0x01.hbtn` to `/etc/hosts` with localhost ip
+
+```bash
+sudo bash -c "echo '127.0.0.1 web0x01.hbtn' >> /etc/hosts"
+```
+We need this because the cyber websec site expects the `web0x01.hbtn` hostname.
+
+
+### 2.4 local PC port 8080 ssh forwarding to ubuntu port 80
+
+```bash
+ssh -L 8080:web0x01.hbtn:80 -p 12290 root@ssh.cod-eu-west-3.hbtn.io
+# Password: bed316fafc34473c880e14822800322c
+```
+the `-L` forwards `local_port`:`destination_host`:`destination_port`
+
+-->
+
+### 2.0 start sandbox `cyber_websec_0x01`
+
+- hostname: `web-0-251-155.cod-eu-west-3.hbtn.io`
+- ip: `10.42.251.155`
+
+
+## 2.1 Start VPN
+
+- visit `https://intranet-dlh.hbtn.io/user_sandboxes#`
+- \ Create VPN Configuration
+- \ Choose Region -> Europe
+- \ Create VPN Configuration
+- wait a few seconds, reload page
+- \ Europe (Paris) Download configuration
+- download file `attila_nemet_cyber_dlh_lu.ovpn` (in my case)
+- execute:
+```bash
+sudo openvpn attila_nemet_cyber_dlh_lu.ovpn
+```
+- the prompt is not returned, that is ok
+
+
+## 2.2 Set `web0x01.hbtn` to point to ip of `cyber_websec_0x01`
+
+On local PC edit `/etc/hosts`:
+
+```bash
+sudo bash -c "echo '10.42.251.155 web0x01.hbtn' >> /etc/hosts"
+```
+
+Make sure your `hosts` file is clean and tidy, if not clean it.
+
+```bash
+cat /etc/hosts
+127.0.0.1       localhost
+127.0.1.1       kali
+::1             localhost ip6-localhost ip6-loopback
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+10.42.251.155 web0x01.hbtn
+```
+
+## 2.3 Continue with the link from last exercise
+
+When we visited the [http://web0x01.hbtn:8080/a2/crypto_encoding_failure/](http://web0x01.hbtn:8080/a2/crypto_encoding_failure/) link we saw the left sidebar has an item **A3 - Injection** and clicking on this we have our next candidate: [Cross Site Scripting - Stored](http://web0x01.hbtn/a3/xss_stored/profile)
+- goto: [http://web0x01.hbtn/a3/xss_stored/profile](http://web0x01.hbtn/a3/xss_stored/profile)
+- login `yosri`:`yosri`
+- F12 (developer tools)
+- soon every few seconds we're getting a 200 GET `http://web0x01.hbtn/api/a3/xss_stored/profile`
+- checking the response to this request we see:
+```json
+{
+	"status": "success",
+	"user_data": {
+		"FLAG_1": false,
+		"FLAG_2": false,
+		"followers": [],
+		"following": [],
+		"last_actions": [
+			"John - Visited you - Tue Jul 14 11:13:01 2026 - UserID: 918203",
+			"Jimmy - Visited you - Tue Jul 14 11:13:01 2026 - UserID: 32781850",
+			"Dexter - Visited you - Tue Jul 14 11:13:01 2026 - UserID: 811152675"
+		]
+	}
+}
+```
+
+- following the hints for this exercise, we're going to visit each profile:
+
+  - http://web0x01.hbtn/a3/xss_stored/profile/918203
+  - http://web0x01.hbtn/a3/xss_stored/profile/32781850
+  - http://web0x01.hbtn/a3/xss_stored/profile/811152675
+
+- clicking the heart of each user (or alternatively visiting the links below)
+
+  - http://web0x01.hbtn/api/a3/xss_stored/like/918203
+  - http://web0x01.hbtn/api/a3/xss_stored/like/32781850
+  - http://web0x01.hbtn/api/a3/xss_stored/like/811152675
+
+- ... and Yosri is happy, he's giving us the solution:
+  ```
+  Congratulations!
+  FLAG_1/2:
+  a28af3d118142ab65b02599477bd698c
+  ```
+
+## 2.4 Report the Flag
+
+```bash
+echo a28af3d118142ab65b02599477bd698c > 3-flag.txt
+
+cat 3-flag.txt
+```
+
+- commit and run correction
