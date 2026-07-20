@@ -88,3 +88,39 @@ echo 92383e47a8806601622b2c98a761638f > 0-flag.txt
 
 cat 0-flag.txt
 ```
+
+
+## 1. Client-Side TLS Authentication with Burp Suite
+
+This task involves navigating client-side TLS authentication—a critical aspect of ensuring secure connections between clients and servers.
+Upon accessing `https://web0x02.hbtn`, you'll encounter a welcome screen offering a download link for a `.p12` certificate.  \
+Your mission (should you accept ;-) is to correctly install this certificate within Burp Suite to authenticate and reveal hidden content guarded by TLS client authentication.
+
+### Step 1.1: Downloading the PKCS#12 Certificate
+
+- Visit `https://web0x02.hbtn` through your browser configured to use Burp Suite as its proxy.
+- On the welcome screen, download the .p12 certificate provided via the download link. (Or Simply through: `https://web0x02.hbtn/static/web0x012.p12`)
+
+### Step 1.2: Configuring Burp Suite with Client TLS Certificate
+
+- With the `.p12` certificate downloaded, open Burp Suite and navigate to Proxy -> Options. (Burp \ Settings \ Network \ TLS \ Client TLS Certificates )
+- Scroll down to the TLS section, then click on Client TLS Certificate.
+- Ensure the "Override options" checkbox is selected.
+- Click on `Add` to configure a new client certificate.
+- In the `Destination Host` field, enter `web0x02.hbtn`.
+- For `Certificate Type`, choose `"PKCS#12"` from the dropdown menu.
+- Click `Select file` and browse to the location where you saved the downloaded `.p12` certificate.
+- When prompted for a password, enter `holberton`, which is the password for the certificate.
+
+### Step 3: Reloading the Page to Reveal Hidden Content
+
+- After successfully configuring the client TLS certificate in Burp Suite, revisit `https://web0x02.hbtn` in your browser.
+- If everything is configured correctly, upon reloading, you should bypass the initial welcome screen and gain access to a new page—a direct result of successful client-side TLS authentication.
+
+```bash
+# when navigating to https://web0x02.hbtn 
+# FLAG {f8c4ca67589b6e27098d0a528cf3f1b2} is displayed
+echo f8c4ca67589b6e27098d0a528cf3f1b2 > 1-flag.txt
+
+cat 1-flag.txt
+```
