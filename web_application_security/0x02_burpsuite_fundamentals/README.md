@@ -80,7 +80,11 @@ cat /etc/hosts | grep web0x02.hbtn
 
 
 ```bash
+# when navigating to https://web0x02.hbtn this flag is displayed:
 echo f8c4ca67589b6e27098d0a528cf3f1b2 > 0-flag.txt
+
+# when examining Burp \ Settings \ Network \ TLS \ web0x02.hbtn \ Subject field has a flag-like string:
+echo 92383e47a8806601622b2c98a761638f > 0-flag.txt
 
 cat 0-flag.txt
 ```
