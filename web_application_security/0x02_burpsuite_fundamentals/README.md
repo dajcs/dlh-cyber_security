@@ -201,3 +201,59 @@ echo 133d648ecb3a2abfdebf65ed4fc6f591 > 3-flag.txt
 
 echo 3-flag.txt
 ```
+
+## 4. The Intruder's Path to Hidden Profiles
+
+Burp Suite's Intruder tool is engineered for automating customized attacks against web applications.
+This task will have you utilize Intruder to discover hidden user profiles by automating requests with varying parameters.
+Your mission is to find a specific profile ID that reveals a hidden `Flag` ⛳️ by systematically testing different ID values.
+
+
+### Step 4.1: Capturing the Request
+
+- `Intercept Off`  \
+  Navigate to `/task3` or continue from the previous task's page by clicking the "Continue" button.
+- `Intercept On`
+- Click the "Refresh" button on the /task4 page to generate a request. Once captured, send it to `Intruder` by pressing `Ctrl + I` or manually via the context menu, right click on `HTTP	REQUEST	GET	https://web0x02.hbtn/api/task4/profile/58263966` then \ Send to Intruder
+
+
+### Step 4.2: Setting Up and Executing an Intruder Attack
+
+- Within the Intruder tab, make sure you are looking at tab `2` (tab `1` is just a generic example provided by Burp)
+- the very first line is: `GET /api/task4/profile/58263966 HTTP/1.1`
+- The user profile ID is `58263966`.
+- highlight these numbers (58263966).
+- Click the `Add §` button located just above the text box. The number should now look like this: `§58263966§`. This tells Burp Suite to inject the payloads into this specific spot.
+- on the right side of the screen is the Payloads panel 
+- Find the `Payload type` dropdown (currently it says `Simple list`). Click it and select `Numbers`.
+- A new configuration area will appear below it for number ranges.
+- In the From field, type your starting ID: `58263966`
+- In the To field, type the starting ID plus 100: `58264066`
+- In the Step field, type 1 (this tells it to count up one by one).
+
+### Step 4.3: Attack
+
+- Click the orange Start attack button at the top right of the window.
+- A new window should pop up showing the attack progress.
+- Instead the new window tells you that Burp community edition sucks.
+- click ok
+- keep an eye on the Status column in the Burp \ Logger. 
+- Look for a request that returns a 200 status code instead of an error or redirect (status 403 in our case)
+- Once you find a profile ID that yields a 200 response, note this ID (this profile bio contains the FLAG). It signifies access to a hidden or non-public user profile.
+- my 200: `GET /api/task4/profile/58263996`
+
+
+### Step 4.4: Retrieving the Flag
+
+- Return to the original intercepted request in the Proxy -> Intercept tab.
+- Replace the profile ID in the request with the ID discovered during the Intruder attack.
+- Forward the modified request.
+- The response should now render a hidden user profile page, unveiling the sought-after Flag.
+
+```bash
+# Congratulations!
+# FLAG: d236fcff3c8cc0f7ed3184f17b65ff8d
+echo d236fcff3c8cc0f7ed3184f17b65ff8d > 4-flag.txt
+
+echo 4-flag.txt
+```
