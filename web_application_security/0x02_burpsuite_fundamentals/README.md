@@ -80,9 +80,6 @@ cat /etc/hosts | grep web0x02.hbtn
 
 
 ```bash
-# when navigating to https://web0x02.hbtn this flag is displayed:
-echo f8c4ca67589b6e27098d0a528cf3f1b2 > 0-flag.txt
-
 # when examining Burp \ Settings \ Network \ TLS \ web0x02.hbtn \ Subject field has a flag-like string:
 echo 92383e47a8806601622b2c98a761638f > 0-flag.txt
 
@@ -112,7 +109,7 @@ Your mission (should you accept ;-) is to correctly install this certificate wit
 - Click `Select file` and browse to the location where you saved the downloaded `.p12` certificate.
 - When prompted for a password, enter `holberton`, which is the password for the certificate.
 
-### Step 3: Reloading the Page to Reveal Hidden Content
+### Step 1.3: Reloading the Page to Reveal Hidden Content
 
 - After successfully configuring the client TLS certificate in Burp Suite, revisit `https://web0x02.hbtn` in your browser.
 - If everything is configured correctly, upon reloading, you should bypass the initial welcome screen and gain access to a new page—a direct result of successful client-side TLS authentication.
@@ -124,3 +121,49 @@ echo f8c4ca67589b6e27098d0a528cf3f1b2 > 1-flag.txt
 
 cat 1-flag.txt
 ```
+
+
+## 2. Modifying Page Responses to Reveal Hidden Information
+
+In this task, you will delve deeper into the functionalities of Burp Suite, particularly focusing on manipulating web server responses.
+By intercepting and altering responses, you'll learn how to modify web page content in real-time.
+Your objective is to reveal a hidden `Flag` ⛳️ on the `/task2` page by spoofing the frontend through response modification.
+
+### Step 2.1: Intercepting the Download Request
+
+- Ensure Burp Suite is configured correctly with your browser's proxy settings.
+- Visit `/task2` or click the "Continue" button from the previous task's page to navigate there.
+- In Burp Suite, make sure Intercept is On in the Proxy -> Intercept tab.
+- On the `/task2` page, click the "Download" button. Burp Suite should capture the outbound request to the web server.
+
+### Step 2.2: Modifying the Server Response
+
+- With the request captured, right click on request `HTTP	REQUEST	GET	https://web0x02.hbtn/api/task2/check_status`, then choose `Do intercept` -> `Response to this request` -- this is to enable capturing the response from server `web0x02.htbn` towards our browser
+- press the orange `-> Forward` button to send our request to the server
+- Burp captures the response:
+  ```json
+  {
+  	"message": {
+  		"payment_status": "unpaid",
+  		"refresh_token": "dcb2f07331a8637ea23a1d43bfafeb70"
+  	},
+  	"success": false,
+  	"username": "dajcs"
+  }
+  ```
+- edit: `unpaid` -> `paid`, `"success": true`
+- click orange `-> Forward` to forward the edited message back to our browser
+- Burp captures the next request: `HTTP	REQUEST	GET	https://web0x02.hbtn/api/task2/flag`
+- click orange `-> Forward` to get the flag in the browser
+
+
+### Step 2.3: Revealing the Flag
+
+- FLAG: 843d2d370de2621af2a9603e37a4a952
+
+```bash
+echo 843d2d370de2621af2a9603e37a4a952 > 2-flag.txt
+
+echo 2-flag.txt
+```
+
