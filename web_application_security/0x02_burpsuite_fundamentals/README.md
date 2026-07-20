@@ -320,3 +320,56 @@ echo 54abf5fc96a7d3f8a372c614d9197ffe > 5-flag.txt
 
 cat 5-flag.txt
 ```
+
+
+## 6. `Decoder` Tab - Manipulating Base64 Encoded Bearer Tokens
+
+In the final task of this series, you'll delve into the intricacies of Bearer Token manipulation.
+By intercepting a request that includes a Bearer Token, you'll decode, modify, and re-encode the token to escalate privileges and reveal a hidden `Flag` ⛳️.
+This task emphasizes the importance of secure token handling and validation by web applications.
+
+
+### Step 6.1: Intercepting the Request
+
+- `Intercept Off`  \
+  Navigate to `/task6` or continue from the previous task's page by clicking the "Continue" button.
+- `Intercept On`  \
+- Click the "Check All" button on the /task6 page to generate a request.
+- Intercept this request in Burp Suite.
+
+
+### Step 6.2: Modifying the Bearer Token
+
+- Locate the `Authorization` header in the intercepted request, which contains the Bearer Token.
+- Right-click on the token and select "Send to Decoder" or navigate to the Decoder tab and paste the token there.
+
+
+### Step 6.3: Decoding and Editing the Token
+
+In the Decoder tab, follow these steps to decode and modify the token:
+1. Decode the token from Base64.
+2. Decompress the decoded data (GZIP).
+3. You should now see a JSON object with an `"admin": false` value.
+4. Edit the JSON to change `"admin": false` to `"admin": true`.
+5. Compress the modified JSON using GZIP.
+6. Encode the compressed data back to Base64.
+
+
+### Step 6.4 Replacing the Modified Token
+
+- Copy the newly encoded token.
+- Return to the Proxy -> Intercept tab, and replace the original Bearer Token in the Authorization header with your modified token.
+- Forward the request.
+
+
+### Step 6.5: Revealing the Flag
+
+- get the flag
+
+```bash
+# Congratulations!
+# FLAG: 8b96e02115ec00089099138ee2959193
+echo 8b96e02115ec00089099138ee2959193 > 6-flag.txt
+
+cat 6-flag.txt
+```
