@@ -167,3 +167,37 @@ echo 843d2d370de2621af2a9603e37a4a952 > 2-flag.txt
 echo 2-flag.txt
 ```
 
+
+## 3. Exploring the Repeater Tool
+
+Burp Suite's Repeater tool is pivotal for testing and tweaking requests without repeatedly interacting with the web application itself.
+Your objective in this task is to utilize Repeater to guess login credentials on a page designed to mimic a router's login portal.
+By examining the request details and making educated adjustments, you'll aim to gain unauthorized access and uncover a hidden `Flag` ⛳️.
+
+### Step 3.1: Capturing the Login Request
+
+- `Intercept Off`  \
+  Navigate to `/task3` or continue from the previous task's page by clicking the "Continue" button.
+- `Intercept On`
+- On the `/task3` page, click the designated button to initiate a login request. Once the request is captured in Burp Suite, use the shortcut Ctrl + R (or right-click request `HTTP	REQUEST	POST	https://web0x02.hbtn/api/task3/signin` and select Send to Repeater) to send it to the Repeater tool.
+
+
+### Step 3.2: Guessing Credentials with Repeater
+
+- In the Repeater tab, you'll see the captured login request ready for modification. Based on the hint that the page uses default router credentials, attempt common combinations like `admin`/`admin`, `admin`/`password`, or similar.
+- Pay attention to other fields in the request, such as role and remember me options. Altering these values could impact the server's response and might be necessary for successful authentication.
+
+### Step 3.3: Uncovering the Flag
+
+- Continue tweaking and resending your request as needed based on server responses until you successfully authenticate (`admin`, `Michelangelo`, `admin`, `1`)
+```json
+{
+	"message": "Congratulation\nFLAG: 133d648ecb3a2abfdebf65ed4fc6f591",
+	"success": true
+}
+```
+```bash
+echo 133d648ecb3a2abfdebf65ed4fc6f591 > 3-flag.txt
+
+echo 3-flag.txt
+```
