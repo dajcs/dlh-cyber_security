@@ -212,7 +212,7 @@ Your mission is to find a specific profile ID that reveals a hidden `Flag` ⛳�
 ### Step 4.1: Capturing the Request
 
 - `Intercept Off`  \
-  Navigate to `/task3` or continue from the previous task's page by clicking the "Continue" button.
+  Navigate to `/task4` or continue from the previous task's page by clicking the "Continue" button.
 - `Intercept On`
 - Click the "Refresh" button on the /task4 page to generate a request. Once captured, send it to `Intruder` by pressing `Ctrl + I` or manually via the context menu, right click on `HTTP	REQUEST	GET	https://web0x02.hbtn/api/task4/profile/58263966` then \ Send to Intruder
 
@@ -248,7 +248,7 @@ Your mission is to find a specific profile ID that reveals a hidden `Flag` ⛳�
 - Return to the original intercepted request in the Proxy -> Intercept tab.
 - Replace the profile ID in the request with the ID discovered during the Intruder attack.
 - Forward the modified request.
-- The response should now render a hidden user profile page, unveiling the sought-after Flag.
+- The response should now render a hidden user profile page (Yosri, of course), unveiling the sought-after Flag.
 
 ```bash
 # Congratulations!
@@ -256,4 +256,67 @@ Your mission is to find a specific profile ID that reveals a hidden `Flag` ⛳�
 echo d236fcff3c8cc0f7ed3184f17b65ff8d > 4-flag.txt
 
 echo 4-flag.txt
+```
+
+
+## 5. Deciphering Tokens with Sequencer
+
+Burp Suite's Sequencer tool is designed for testing the randomness of session tokens, cookies, and other critical data that should be unpredictable and resistant to guessing attacks.
+In this exercise, you'll use Sequencer to analyze a specific cookie, hijack_session, to uncover patterns or weaknesses in how it's generated.
+Ultimately, your analysis will lead you to a valid session cookie that reveals a hidden `Flag` ⛳️.
+
+### Step 5.1: Capturing the Request
+
+- `Intercept Off`  \
+  Navigate to `/task5` or continue from the previous task's page by clicking the "Continue" button.
+- `Intercept On`  \
+  Click Reload to `/task5`.
+- Once the page loads, capture this initial request and send it to the Repeater by pressing Ctrl + R or through the context menu.
+
+
+### Step 5.2: Preparing for Sequencer Analysis
+
+- In the Repeater tab, locate the `Cookie` header and remove the `hijack_session` value from the request.
+- Right-click on the modified request and select "Send to Sequencer."
+
+
+### Step 5.3: Configuring and Starting Sequencer
+
+- In the Burp \ Sequencer tab, ensure the tool detects the `hijack_session` parameter for analysis (select Cookie: hijack_session=f88...)
+- Before starting the live capture, enter Sequencer settings and adjust the "Throttle between requests (ms)" to 25 to regulate the pace of token generation without overwhelming the server and set number of threads to 1
+- Close the settings and initiate the live capture of tokens. Aim to generate around 200 tokens before halting the capture.
+
+
+### Step 5.4: Analyzing Token Pattern and Hijacking Session
+
+- After stopping the capture, export or copy the tokens into your preferred text editor for analysis.
+- Review the sequence of tokens to identify any discernible patterns or anomalies, such as skipped or repeating values.
+- Locate a skipped cookie value—this represents a valid session that can be exploited.
+```bash
+f889bf9f-3189-4581-b854-cfdab56e02a8-178455888850
+f889bf9f-3189-4581-b854-cfdab56e02a8-178455888855
+# f889bf9f-3189-4581-b854-cfdab56e02a8-178455888860 <-missing
+f889bf9f-3189-4581-b854-cfdab56e02a8-178455888865
+f889bf9f-3189-4581-b854-cfdab56e02a8-178455888870
+```
+
+- Replace your current session cookie in the browser (using developer tools or a cookie management extension) with the identified valid hijack_session value.
+
+
+### Step 5.5: Revealing the Flag
+
+- Open your web browser and go to the /task5 page.
+- Open your browser's Developer Tools (press F12 or right-click -> Inspect).
+- Go to the Application tab (Chrome/Edge) or Storage tab (Firefox).
+- On the left sidebar, expand Cookies and click on the website (https://web0x02.hbtn).
+- Find the hijack_session cookie in the list. Double-click its current value and paste in the stolen token: f889bf9f-3189-4581-b854-cfdab56e02a8-178455888860
+- Close the developer tools and Refresh the web page.
+- Scratch the card!
+
+```bash
+# Congratulations!
+# FLAG: 54abf5fc96a7d3f8a372c614d9197ffe
+echo 54abf5fc96a7d3f8a372c614d9197ffe > 5-flag.txt
+
+cat 5-flag.txt
 ```
