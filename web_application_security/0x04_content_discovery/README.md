@@ -82,18 +82,8 @@ cat 0-flag.txt
 
 git add .
 git commit -m "0-flag.txt"
+git push
 ```
-
-### Double-check
-
-The correction check failed at `Check 0` - this means even the directory/README.md wasn't found.
-
-- GitHub repository: dlh-cyber_security
-- Directory: web_application_security/0x04_content_discovery
-- File: 0-flag.txt
-
-- 2<sup>nd</sup> correction try it was ok, even though only this double-check has been added to `README.md`
-- `¯\_(ツ)_/¯`
 
 
 
@@ -134,9 +124,6 @@ cat 1-flag.txt
 
 ```bash
 git add .
-git commit -m "1-flag.txt"
+git commit -m "1-flag.txt with push"
+git push
 ```
-
-### Double-check
-
-- since first correction request failed...
