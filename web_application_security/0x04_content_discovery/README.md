@@ -282,3 +282,19 @@ git add .
 git commit -m "2-flag.txt"
 git push
 ```
+
+- nope
+- double checking the **Repo**:
+  - GitHub repository: `dlh-cyber_security`
+  - Directory: `web_application_security/0x04_content_discovery`
+  - File: `4-flag.txt`
+
+- another try
+
+```bash
+cp 2-flag.txt 4-flag.txt
+
+git add .
+git commit -m "4-flag.txt"
+git push
+```
