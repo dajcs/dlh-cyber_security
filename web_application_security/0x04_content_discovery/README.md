@@ -298,3 +298,30 @@ git add .
 git commit -m "4-flag.txt"
 git push
 ```
+
+
+```bash
+gobuster dir \
+  -u "http://web0x04.hbtn/payment_gateway/" \
+  -w "common.php.txt" \
+  -t 20 \
+  -o gobuster-payment_gateway.txt
+
+# hiddenflag.php       (Status: 200) [Size: 84]
+```
+
+```bash
+curl http://web0x04.hbtn/payment_gateway/hiddenflag.php
+
+# Flag found! Congratulations. Here is your flag:  50a99edc175c95e7cfb9a8a56a2dc3de  
+
+cat 2-flag.txt 4-flag.txt
+# 50a99edc175c95e7cfb9a8a56a2dc3de
+# 50a99edc175c95e7cfb9a8a56a2dc3de
+
+
+# turns out earlier I forgot to run the cp 2-flag.txt 4-flag.txt
+git add .
+git commit -m "2-flag.txt + 4-flag.txt"
+git push
+```
