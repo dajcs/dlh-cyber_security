@@ -81,4 +81,22 @@ echo 92383e47a8806601622b2c98a761638f > 0-flag.txt
 cat 0-flag.txt
 
 git add .
+git commit -m "0-flag.txt"
+```
+
+### Double-check
+
+The correction check failed at `Check 0` - this means even the directory/README.md wasn't found.
+
+- GitHub repository: dlh-cyber_security
+- Directory: web_application_security/0x04_content_discovery
+- File: 0-flag.txt
+
+```bash
+ls -l ~/dlh-cyber_security/web_application_security/0x04_content_discovery/README.md
+-rw-rw-r-- 1 kali kali 3287 Jul 21 06:25 /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/README.md
+
+ls -l ~/dlh-cyber_security/web_application_security/0x04_content_discovery/0-flag.txt
+-rw-rw-r-- 1 kali kali 33 Jul 21 06:22 /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/0-flag.txt
+
 ```
