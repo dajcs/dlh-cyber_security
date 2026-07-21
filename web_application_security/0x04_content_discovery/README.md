@@ -92,11 +92,48 @@ The correction check failed at `Check 0` - this means even the directory/README.
 - Directory: web_application_security/0x04_content_discovery
 - File: 0-flag.txt
 
+- 2<sup>nd</sup> correction try it was ok, even though only this double-check has been added to `README.md`
+- `¯\_(ツ)_/¯`
+
+
+
+## 1. Manual Discovery - Headers, Headers, Always Check Headers
+
+HTTP Headers often hide secrets 🤫.
+In this task, you'll meticulously inspect HTTP response headers to unearth a hidden `Flag` ⛳️.  \
+This requires a keen eye and an understanding of how developers might conceal information within the HTTP protocol.
+
+
+### Useful Instructions
+
+1. Utilize `curl`, browser developer tools, or similar tools to examine the complete set of HTTP response headers returned from the target endpoint.
+2. Do not overlook non-standard headers; the flag may be tucked away within a custom or uncommon header field.
+3. Be aware that servers can dynamically alter headers based on the request's nature. Vary your request type, user-agent, and other headers to provoke different responses.
+4. Certain headers might appear only under specific circumstances (e.g., receiving error codes or when making requests with unique headers). Adjust your requests to explore these possibilities.
+
+
 ```bash
-ls -l ~/dlh-cyber_security/web_application_security/0x04_content_discovery/README.md
--rw-rw-r-- 1 kali kali 3287 Jul 21 06:25 /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/README.md
-
-ls -l ~/dlh-cyber_security/web_application_security/0x04_content_discovery/0-flag.txt
--rw-rw-r-- 1 kali kali 33 Jul 21 06:22 /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/0-flag.txt
-
+# first try
+curl -I http://web0x04.hbtn/
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Tue, 21 Jul 2026 10:52:08 GMT
+# Content-Type: text/html; charset=UTF-8
+# Connection: keep-alive
+# X-Secret-Flag: d3cb5dd4bbe4410a51822ff2226508b4
+# Link: <http://web0x04.hbtn/wp-json/>; rel="https://api.w.org/"
 ```
+
+### Let's try our X-Secret-Flag
+
+```bash
+echo d3cb5dd4bbe4410a51822ff2226508b4 > 1-flag.txt
+
+cat 1-flag.txt
+```
+
+```bash
+git add .
+git commit -m "1-flag.txt"
+```
+
