@@ -1,0 +1,3 @@
+ns1.db.web0x04.hbtn                                          127.0.0.1
+atom.db.web0x04.hbtn                                         ;; communications error to 10.42.8.228#53: timed out
+serv2.db.web0x04.hbtn                                        ;; communications error to 10.42.8.228#53: timed out

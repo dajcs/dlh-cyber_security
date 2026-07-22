@@ -1,0 +1,16 @@
+
+; <<>> DiG 9.20.22-1-Debian <<>> @10.42.8.228 db.web0x04.hbtn AXFR +tcp
+; (1 server found)
+;; global options: +cmd
+db.web0x04.hbtn.	604800	IN	SOA	ns1.web0x04.hbtn. admin.web0x04.hbtn. 1 604800 86400 2419200 604800
+db.web0x04.hbtn.	604800	IN	A	6.19.0.21
+db.web0x04.hbtn.	604800	IN	NS	ns1.web0x04.hbtn.
+lakemaryprep.learning.db.web0x04.hbtn. 604800 IN TXT "Holberton Sec Lab - FLAG: 7397b6974da78407f55de711eb04f194"
+lakemaryprep.learning.db.web0x04.hbtn. 604800 IN A 127.0.0.1
+ns1.db.web0x04.hbtn.	604800	IN	A	127.0.0.1
+db.web0x04.hbtn.	604800	IN	SOA	ns1.web0x04.hbtn. admin.web0x04.hbtn. 1 604800 86400 2419200 604800
+;; Query time: 11 msec
+;; SERVER: 10.42.8.228#53(10.42.8.228) (TCP)
+;; WHEN: Wed Jul 22 05:20:05 EDT 2026
+;; XFR size: 7 records (messages 1, bytes 328)
+
