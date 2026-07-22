@@ -283,22 +283,6 @@ git commit -m "2-flag.txt"
 git push
 ```
 
-- nope
-- double checking the **Repo**:
-  - GitHub repository: `dlh-cyber_security`
-  - Directory: `web_application_security/0x04_content_discovery`
-  - File: `4-flag.txt`
-
-- another try
-
-```bash
-cp 2-flag.txt 4-flag.txt
-
-git add .
-git commit -m "4-flag.txt"
-git push
-```
-
 
 ```bash
 gobuster dir \
@@ -315,13 +299,22 @@ curl http://web0x04.hbtn/payment_gateway/hiddenflag.php
 
 # Flag found! Congratulations. Here is your flag:  50a99edc175c95e7cfb9a8a56a2dc3de  
 
-cat 2-flag.txt 4-flag.txt
-# 50a99edc175c95e7cfb9a8a56a2dc3de
+cat 2-flag.txt 
 # 50a99edc175c95e7cfb9a8a56a2dc3de
 
+```
 
-# turns out earlier I forgot to run the cp 2-flag.txt 4-flag.txt
+
+- double checking the **Repo**:
+  - GitHub repository: `dlh-cyber_security`
+  - Directory: `web_application_security/0x04_content_discovery`
+  - File: `4-flag.txt`
+
+
+```bash
+mv 2-flag.txt 4-flag.txt
+
 git add .
-git commit -m "2-flag.txt + 4-flag.txt"
+git commit -m "four-flag.txt"
 git push
 ```
