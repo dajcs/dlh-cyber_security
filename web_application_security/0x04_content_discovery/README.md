@@ -947,3 +947,135 @@ git add .
 git commit -m "5-flag.txt"
 git push
 ```
+
+
+## 4. FFuf Series - Subdomain Fuzzing Frenzy
+
+Explore the web infrastructure by using ffuf to brute-force subdomains (virtual hosts) on the target server.
+Discover hidden subdomains that might contain important information, such as a flag or access to alternative environments.
+
+Target Domain: `web0x04.hbtn`
+
+### Use `ffuf` tool
+
+**Useful Instructions**
+
+1. Wordlist Preparation:
+        Use a wordlist tailored to subdomain enumeration. Make sure it includes common subdomains, environment names, and other relevant terms.
+2. Fuzz Subdomains:
+         Run `ffuf` to fuzz for potential subdomains of the target domain. Pay attention to the responses and any unusual or unexpected status codes.
+3. Examine Responses:
+         Analyze the output and investigate any discovered subdomains.
+         Some may return useful content that could contain sensitive information, such as a flag or further clues for your reconnaissance.
+
+
+**Hints**
+
+* Look for subdomains that produce different or unexpected HTTP status codes.
+* If you find an accessible subdomain, carefully inspect the content for any hidden information.
+* Some subdomains might seem unimportant but can still contain critical clues or data.
+
+
+### Step 1 — Locate a suitable SecLists subdomain wordlist
+
+```bash
+ls -la /usr/share/seclists/Discovery/DNS/ 2>/dev/null | grep -iE "subdomain|top1million|5000|110000"        
+-rw-r--r-- 1 root root  1426217 Sep 19  2025 bitquark-subdomains-top100000.txt
+-rw-r--r-- 1 root root 25319380 Sep 19  2025 bug-bounty-program-subdomains-trickest-inventory.txt
+-rw-r--r-- 1 root root  8285473 Sep 19  2025 combined_subdomains.txt
+-rw-r--r-- 1 root root   605423 Sep 19  2025 deepmagic.com-prefixes-top50000.txt
+-rw-r--r-- 1 root root   155984 Sep 19  2025 italian-subdomains.txt
+-rw-r--r-- 1 root root 51558245 Sep 19  2025 n0kovo_subdomains.txt
+-rw-r--r-- 1 root root  5984338 Sep 19  2025 shubs-subdomains.txt
+-rw-r--r-- 1 root root    55958 Sep 19  2025 subdomains-spanish.txt
+-rw-r--r-- 1 root root  1115646 Sep 19  2025 subdomains-top1million-110000.txt
+-rw-r--r-- 1 root root   148689 Sep 19  2025 subdomains-top1million-20000.txt
+-rw-r--r-- 1 root root    33566 Sep 19  2025 subdomains-top1million-5000.txt
+```
+
+### Step 2 — Measure the baseline (bogus vhost) response
+
+```bash
+curl -s -o /dev/null -w "status=%{http_code} size=%{size_download}\n" -H "Host: definitelynotreal.web0x04.hbtn" http://10.42.8.228/
+
+# status=404 size=153
+
+```
+
+**Inputs**:
+
+- `curl -s` — silent (no progress meter).
+- `-o /dev/null` — discard the actual page body; we only care about the metrics, not the HTML.
+- `-w "status=%{http_code} size=%{size_download}\n"` — write-out format: print just the HTTP status code and the exact byte size of the response body. These two numbers are what ffuf filters on.
+- `-H "Host: definitelynotreal.web0x04.hbtn"` — send a deliberately fake vhost. This forces nginx into its default/fallback response — precisely the baseline we want to characterize and later exclude.
+- `http://10.42.8.228/` — the reachable target IP.
+
+
+**Possible outputs and how to read them**:
+
+- **`status=404 size=153`** (or similar) — this is what we expect from the earlier 404 we saw. That `153` is the magic number: we'll tell ffuf `-fs 153` (filter size 153) so it hides every response of that exact size, leaving only vhosts that behave differently. A real subdomain's page will have a different size and slip through the filter.
+- **A redirect (`301`/`302`) or a different size** — then the baseline is different and we'd filter on that value instead. Either way, we now know the number to exclude.
+- **`status=200`** for a fake host — would mean nginx serves a catch-all site for unknown hosts; we'd then filter on that size and watch for status/size deviations instead.
+
+
+### Step 3 — Fuzz virtual hosts with ffuf
+
+```bash
+ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
+     -H "Host: FUZZ.web0x04.hbtn" \
+     -u http://10.42.8.228/ \
+     -fs 153 \
+     -t 40
+
+#         /'___\  /'___\           /'___\       
+#        /\ \__/ /\ \__/  __  __  /\ \__/       
+#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
+#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
+#          \ \_\   \ \_\  \ \____/  \ \_\       
+#           \/_/    \/_/   \/___/    \/_/       
+# 
+#        v2.1.0-dev
+# ________________________________________________
+# 
+#  :: Method           : GET
+#  :: URL              : http://10.42.8.228/
+#  :: Wordlist         : FUZZ: /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt
+#  :: Header           : Host: FUZZ.web0x04.hbtn
+#  :: Follow redirects : false
+#  :: Calibration      : false
+#  :: Timeout          : 10
+#  :: Threads          : 40
+#  :: Matcher          : Response status: 200-299,301,302,307,401,403,405,500
+#  :: Filter           : Response size: 153
+# ________________________________________________
+# 
+sub                     [Status: 200, Size: 56, Words: 3, Lines: 2, Duration: 74ms]
+# :: Progress: [4989/4989] :: Job [1/1] :: 296 req/sec :: Duration: [0:00:18] :: Errors: 0 ::
+```
+
+We got a hit:
+```bash
+sub                     [Status: 200, Size: 56, Words: 3, Lines: 2, Duration: 74ms]
+```
+
+
+### Step 4 — Fetch the sub vhost's content
+
+
+```bash
+curl -s -H "Host: sub.web0x04.hbtn" http://10.42.8.228/
+
+# Congratulations! FLAG: c8ae24a662a495287194f61f4976b98e
+```
+
+### Step 5 - Save the flag
+
+```bash
+echo c8ae24a662a495287194f61f4976b98e > 6-flag.txt
+
+cat 6-flag.txt
+
+git add .
+git commit -m "6-flag.txt"
+git push
+```
