@@ -1079,3 +1079,364 @@ git add .
 git commit -m "6-flag.txt"
 git push
 ```
+
+
+## 5. The Buster Series - Fuzzing for Fun and Profit `fuzz mode`
+
+Fuzzing is a powerful technique used to discover unknown vulnerabilities, misconfigurations, or hidden content by sending a wide range of inputs and observing the application's responses.
+You'll leverage this mode to find a page that will return a `Flag` ⛳️ .
+
+- Target Website: `http://web0x04.hbtn/{¶}/hbtn-{¶}`
+
+- Fuzz List:
+
+```bash
+cat > list_fuzz.txt <<'EOF'
+hq
+school
+2019
+2023
+2024
+hbtn
+home
+college
+2021
+2022
+holberton
+2020
+work
+2025
+fuzz
+2026
+2027
+classroom
+library
+2028
+2029
+2030
+academy
+study
+2023
+graduate
+degree
+research
+program
+enrollment
+internship
+2024
+faculty
+department
+seminar
+tutorial
+lecture
+course
+assignment
+project
+team
+collaboration
+scholarship
+mentor
+peer
+student
+community
+EOF
+
+wc -l list_fuzz.txt
+cat list_fuzz.txt
+```
+
+### Useful Instructions
+
+1. Constructing a fuzzing attack requires a precise location to be efficient.
+2. Create or select a wordlist tailored for fuzzing. Your wordlist should include common filenames, extensions, or parameters that could unveil hidden content.
+3. Execute Gobuster in `fuzz` mode, replacing the target URL's specific component `{¶}` with the keyword `FUZZ`.
+4. Analyze the responses for status codes or content lengths that stand out from the norm. These anomalies could indicate successful discovery of hidden content or functionality.
+5. Document any findings from your fuzzing efforts, highlighting how the discovered resources could impact the target's security posture or provide further avenues for exploration.
+
+**Remember**:
+- Fuzzing can generate a significant amount of traffic. Be mindful of the target server's capacity and any legal or ethical considerations.
+- The effectiveness of fuzzing is highly dependent on the quality and relevance of your wordlist. Customizing your wordlist for the target environment can greatly enhance your results.
+- Don't forget you are checking for two FUZZ
+
+
+### Step 1 — Create the fuzz wordlist
+
+
+```bash
+cat > list_fuzz.txt <<'EOF'
+hq
+school
+2019
+2023
+2024
+hbtn
+home
+college
+2021
+2022
+holberton
+2020
+work
+2025
+fuzz
+2026
+2027
+classroom
+library
+2028
+2029
+2030
+academy
+study
+2023
+graduate
+degree
+research
+program
+enrollment
+internship
+2024
+faculty
+department
+seminar
+tutorial
+lecture
+course
+assignment
+project
+team
+collaboration
+scholarship
+mentor
+peer
+student
+community
+EOF
+
+sort -u list_fuzz.txt | wc -l
+wc -l list_fuzz.txt
+# 45
+# 47 list_fuzz.txt
+```
+
+
+### Step 2 — Measure the baseline (known-bad path) response
+
+```bash
+curl -s -o nonexistent.host.html -w "status=%{http_code} size=%{size_download}\n" -H "Host: nonexistent.web0x04.hbtn" "http://10.42.8.228/nonexistent/hbtn-nonexistent"
+
+# status=404 size=153
+
+curl -s -o nonexistent.html -w "status=%{http_code} size=%{size_download}\n" -H "Host: web0x04.hbtn" "http://10.42.8.228/nonexistent/hbtn-nonexistent" 
+
+# status=404 size=53720
+```
+
+- **Wrong vhost** (`Host: nonexistent.web0x04.hbtn`) → nginx default `404`, 153 bytes.
+- **Right vhost** (`Host: web0x04.hbtn`) → WordPress themed `404`, **53,720 bytes**.
+
+For this task the correct target is the `web0x04.hbtn` vhost, and our baseline miss is a `404` of `53720` bytes.
+
+
+### Step 3 — Run Gobuster in fuzz mode (single keyword, both positions)
+
+```bash
+gobuster fuzz -u "http://10.42.8.228/FUZZ/hbtn-FUZZ" \
+     -H "Host: web0x04.hbtn" \
+     -w list_fuzz.txt \
+     --exclude-length 53720 \
+     -t 20
+===============================================================
+Gobuster v3.8.2
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:              http://10.42.8.228/FUZZ/hbtn-FUZZ
+[+] Method:           GET
+[+] Threads:          20
+[+] Wordlist:         list_fuzz.txt
+[+] Exclude Length:   53720
+[+] User Agent:       gobuster/3.8.2
+[+] Timeout:          10s
+===============================================================
+Starting gobuster in fuzzing mode
+===============================================================
+[Status=404] [Length=35] [Word=fuzz] http://10.42.8.228/fuzz/hbtn-fuzz
+Progress: 9 / 47 (19.15%)[ERROR] error on word 2024: timeout occurred during the request
+[ERROR] error on word home: timeout occurred during the request
+[ERROR] error on word college: timeout occurred during the request
+[ERROR] error on word holberton: timeout occurred during the request
+[ERROR] error on word 2021: timeout occurred during the request
+[ERROR] error on word 2025: timeout occurred during the request
+[ERROR] error on word 2026: timeout occurred during the request
+[ERROR] error on word work: timeout occurred during the request
+[ERROR] error on word 2027: timeout occurred during the request
+[ERROR] error on word classroom: timeout occurred during the request
+[ERROR] error on word library: timeout occurred during the request
+Progress: 20 / 47 (42.55%)[ERROR] error on word 2029: timeout occurred during the request
+[ERROR] error on word 2030: timeout occurred during the request
+Progress: 22 / 47 (46.81%)[ERROR] error on word academy: timeout occurred during the request
+Progress: 24 / 47 (51.06%)[ERROR] error on word graduate: timeout occurred during the request
+Progress: 26 / 47 (55.32%)[ERROR] error on word degree: timeout occurred during the request
+Progress: 27 / 47 (57.45%)[ERROR] error on word research: timeout occurred during the request
+Progress: 28 / 47 (59.57%)[ERROR] error on word program: timeout occurred during the request
+Progress: 29 / 47 (61.70%)[ERROR] error on word internship: timeout occurred during the request
+[ERROR] error on word course: timeout occurred during the request
+[ERROR] error on word assignment: timeout occurred during the request
+[ERROR] error on word faculty: timeout occurred during the request
+[ERROR] error on word seminar: timeout occurred during the request
+[ERROR] error on word tutorial: timeout occurred during the request
+[ERROR] error on word project: timeout occurred during the request
+[ERROR] error on word 2024: timeout occurred during the request
+[ERROR] error on word department: timeout occurred during the request
+[ERROR] error on word lecture: timeout occurred during the request
+[ERROR] error on word enrollment: timeout occurred during the request
+Progress: 40 / 47 (85.11%)[ERROR] error on word team: timeout occurred during the request
+[ERROR] error on word collaboration: timeout occurred during the request
+Progress: 47 / 47 (100.00%)
+===============================================================
+Finished
+===============================================================
+```
+
+- The word `fuzz` (which the task literally included in the wordlist as a nudge) produced a unique, tiny response. The `Status=404` is a bit of misdirection — the size is what gives it away. A 35-byte body on this specific path is almost certainly a custom response, that might be a flag or a pointer.
+- The timeouts: most other words errored with "timeout occurred." That's a rate/latency issue — 20 threads hitting WordPress (which renders a full 53KB page per miss) overwhelmed it, and requests exceeded the 10s timeout.  \
+WordPress 404s are expensive to generate, so high concurrency backfires here. If we needed a clean full run, we'd drop to `-t 5` and raise `--timeout`.
+
+
+
+### Step 4 — Fetch the standout `fuzz` path
+
+```bash
+curl -s -H "Host: web0x04.hbtn" "http://10.42.8.228/fuzz/hbtn-fuzz"
+
+# Page not found. Expected: hbtn-
+```
+
+That 35-byte body is a teaching message, not the flag:
+```bash
+Page not found. Expected: hbtn-
+```
+
+This is the application telling us how the endpoint wants to be addressed. "Expected: hbtn-" means the second path segment should be `hbtn-<something>` where the something is **not** just a copy of the first word. This is the key insight the task was steering us toward with its reminder "**you are checking for two FUZZ**" — the two positions are **independent**, not the same word. Gobuster's single-`FUZZ` approach (same word in both slots) can't express that, which is exactly why we only got this hint page.
+
+`ffuf` allows us to have **two independent fuzzing positions**, and that's ffuf's **clusterbomb** mode — it takes two keywords and two wordlists and tries every combination.  \
+With independent words, `45 × 45 ≈ 2,025` combinations — manageable if we control concurrency (we learned WordPress chokes on high threads).
+
+However, before firing 2,000 requests, there's a smarter move. Let's confirm the first position independently: find which single first-segment value stops returning the WordPress 53720 page. That narrows the search dramatically.  Let's fuzz only the first slot, keeping the second fixed to the literal `hbtn-fuzz` we know produces the hint.
+
+
+### Step 5 — Fuzz only the first position to find the valid prefix
+
+```bash
+ffuf -w list_fuzz.txt \
+     -H "Host: web0x04.hbtn" \
+     -u "http://10.42.8.228/FUZZ/hbtn-fuzz" \
+     -fs 53720 \
+     -t 5 \
+     -p 0.1
+
+#         /'___\  /'___\           /'___\       
+#        /\ \__/ /\ \__/  __  __  /\ \__/       
+#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
+#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
+#          \ \_\   \ \_\  \ \____/  \ \_\       
+#           \/_/    \/_/   \/___/    \/_/       
+# 
+#        v2.1.0-dev
+# ________________________________________________
+# 
+#  :: Method           : GET
+#  :: URL              : http://10.42.8.228/FUZZ/hbtn-fuzz
+#  :: Wordlist         : FUZZ: /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/list_fuzz.txt
+#  :: Header           : Host: web0x04.hbtn
+#  :: Follow redirects : false
+#  :: Calibration      : false
+#  :: Timeout          : 10
+#  :: Threads          : 5
+#  :: Delay            : 0.10 seconds
+#  :: Matcher          : Response status: 200-299,301,302,307,401,403,405,500
+#  :: Filter           : Response size: 53720
+# ________________________________________________
+# 
+# :: Progress: [47/47] :: Job [1/1] :: 1 req/sec :: Duration: [0:00:42] :: Errors: 0 ::
+```
+
+- `-w` list_fuzz.txt — our wordlist fills the single FUZZ keyword.
+- `-H "Host: web0x04.hbtn"` — the WordPress vhost.
+- `-u "http://10.42.8.228/FUZZ/hbtn-fuzz"` — only the **first** segment is fuzzed; the second stays fixed at hbtn-fuzz. This isolates the first position so we learn which prefix the app accepts.
+- `-fs 53720` — filter size: hide the WordPress 404 baseline. Anything that isn't 53720 bytes surfaces.
+- `-t 5` — only 5 threads. Deliberately low: we saw WordPress time out under 20. Slow and complete beats fast and erroring.
+- `-p 0.1` — pause 0.1s between requests per thread, easing load further so we don't trigger timeouts.
+
+
+### Step 6 - `ffuf` in clusterbomb mode
+
+```bash
+ffuf \
+  -w list_fuzz.txt:DIR \
+  -w list_fuzz.txt:FILE \
+  -H "Host: web0x04.hbtn" \
+  -u "http://10.42.8.228/DIR/hbtn-FILE" \
+  -fs 53720 \
+  -t 10 \
+  -p 0.11
+
+#         /'___\  /'___\           /'___\       
+#        /\ \__/ /\ \__/  __  __  /\ \__/       
+#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
+#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
+#          \ \_\   \ \_\  \ \____/  \ \_\       
+#           \/_/    \/_/   \/___/    \/_/       
+# 
+#        v2.1.0-dev
+# ________________________________________________
+# 
+#  :: Method           : GET
+#  :: URL              : http://10.42.8.228/DIR/hbtn-FILE
+#  :: Wordlist         : DIR: /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/list_fuzz.txt
+#  :: Wordlist         : FILE: /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/list_fuzz.txt
+#  :: Header           : Host: web0x04.hbtn
+#  :: Follow redirects : false
+#  :: Calibration      : false
+#  :: Timeout          : 10
+#  :: Threads          : 10
+#  :: Delay            : 0.11 seconds
+#  :: Matcher          : Response status: 200-299,301,302,307,401,403,405,500
+#  :: Filter           : Response size: 53720
+# ________________________________________________
+# 
+# [Status: 200, Size: 86, Words: 10, Lines: 5, Duration: 3707ms]
+#     * DIR: fuzz
+#     * FILE: 2024
+# 
+# [Status: 200, Size: 86, Words: 10, Lines: 5, Duration: 4484ms]
+#     * DIR: fuzz
+#     * FILE: 2024
+# 
+# :: Progress: [2209/2209] :: Job [1/1] :: 1 req/sec :: Duration: [0:35:40] :: Errors: 37 ::
+
+```
+
+- one hit: `fuzz`/hbtn-`2024`
+
+
+### Step 7 - Checking the Flag
+
+```bash
+curl -s -H "Host: web0x04.hbtn" "http://10.42.8.228/fuzz/hbtn-2024"
+
+# Flag found! Congratulations. Here is your flag:  8b96e02115ec00089099138ee2959193
+```
+
+
+### Saving the Flag
+
+```bash
+echo 8b96e02115ec00089099138ee2959193 > 7-flag.txt
+
+cat 7-flag.txt
+
+git add .
+git commit -m "7-flag.txt"
+git push
+```
