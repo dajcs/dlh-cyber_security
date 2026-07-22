@@ -228,7 +228,7 @@ and `payment_gateway` might need further investigation with second gobuster run 
 
 After a half-a-day of unsuccessful busting attempts with different wordlists I've discovered that
 in the very beginning of this task list it has been metioned a [WP Word List](https://github.com/test0001-star/0x04/blob/main/WP_Word_list.txt)
-This contains common .php filenames (294) and we dowloaded it in the current directory as `common.php.txt`
+This contains common .php filenames (294) and I've downloaded it in the current directory as `common.php.txt`
 
 Let's check the `create/` directory:
 
@@ -262,7 +262,10 @@ gobuster dir \
 
 ```
 
-the `hiddenflag.php` sounds promising, let's have a visit to
+> Lessons learned: no matter how big is your wordlist, if it doesn't contain the `hiddenflag` word you won't make it.  \
+` ¯\_(ツ)_/¯ `
+
+The `hiddenflag.php` sounds promising, let's have a visit to
 [http://web0x04.hbtn/create/hiddenflag.php](http://web0x04.hbtn/create/hiddenflag.php)
 
 ```bash
@@ -283,6 +286,9 @@ git commit -m "2-flag.txt"
 git push
 ```
 
+Nope, this wasn't the solution :-(
+
+Double checking if we have another flag under `payment_gateway`:
 
 ```bash
 gobuster dir \
@@ -299,17 +305,20 @@ curl http://web0x04.hbtn/payment_gateway/hiddenflag.php
 
 # Flag found! Congratulations. Here is your flag:  50a99edc175c95e7cfb9a8a56a2dc3de  
 
+# checking if there is a difference between the two flags
 cat 2-flag.txt 
 # 50a99edc175c95e7cfb9a8a56a2dc3de
 
 ```
 
+The two flags are identical.
 
-- double checking the **Repo**:
+Double checking the **Repo**:
   - GitHub repository: `dlh-cyber_security`
   - Directory: `web_application_security/0x04_content_discovery`
-  - File: `4-flag.txt`
+  - **File**: **`4-flag.txt`**
 
+It turns out we were navigating under a false flag.
 
 ```bash
 mv 2-flag.txt 4-flag.txt
@@ -317,4 +326,61 @@ mv 2-flag.txt 4-flag.txt
 git add .
 git commit -m "four-flag.txt"
 git push
+```
+
+
+## 3. The Buster Series - Unveiling Hidden Subdomains `dns mode`
+
+This powerful feature is designed for DNS subdomain enumeration,
+allowing you to uncover hidden or unlinked subdomains which could expose additional facets of the target's online presence or infrastructure vulnerabilities.  \
+Unlock the secrets of DNS by performing a zone transfer to uncover hidden records.  \
+You’ll use advanced DNS querying techniques to reveal alternative DNS records that may not be easily discoverable through standard methods.  \
+You'll leverage this mode to discover hidden subdomain that will return a `Flag` ⛳️ as content with `Task #5` as Website title.
+- Target Machine: `cyber_websec_0x04`
+- Target Domain: `web0x04.hbtn`
+- `dns_wordlist.txt`:
+  ```
+  lakeinsurveyor
+  lakekindred
+  lakelandcenter.place
+  lakelandledger.fl
+  lakemary.place
+  lakemaryprep.learning
+  lakemaster.blog
+  lake-Michigan
+  sub
+  lakemonsters
+  lakenozori.web
+  lakeoconeeacademy
+  db
+  lake-of-the-ozarks
+  lakeofthetorches
+  lakeorion
+  ns1
+  lakeoswegoor
+  ```
+
+Let's prepare this `dns_wordlist.txt`:
+
+```bash
+echo lakeinsurveyor           >> dns_wordlist.txt
+echo lakekindred              >> dns_wordlist.txt
+echo lakelandcenter.place     >> dns_wordlist.txt
+echo lakelandledger.fl        >> dns_wordlist.txt
+echo lakemary.place           >> dns_wordlist.txt
+echo lakemaryprep.learning    >> dns_wordlist.txt
+echo lakemaster.blog          >> dns_wordlist.txt
+echo lake-Michigan            >> dns_wordlist.txt
+echo sub                      >> dns_wordlist.txt
+echo lakemonsters             >> dns_wordlist.txt
+echo lakenozori.web           >> dns_wordlist.txt
+echo lakeoconeeacademy        >> dns_wordlist.txt
+echo db                       >> dns_wordlist.txt
+echo lake-of-the-ozarks       >> dns_wordlist.txt
+echo lakeofthetorches         >> dns_wordlist.txt
+echo lakeorion                >> dns_wordlist.txt
+echo ns1                      >> dns_wordlist.txt
+echo lakeoswegoor             >> dns_wordlist.txt
+
+cat dns_wordlist.txt
 ```
