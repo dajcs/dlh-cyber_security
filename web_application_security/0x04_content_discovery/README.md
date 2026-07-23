@@ -1,7 +1,16 @@
 # Content Discovery
 
+## Table of Contents
 
-## Task 0. Manual Discovery - Secrets in Plain Sight
+- [0. Manual Discovery - Secrets in Plain Sight](#0-manual-discovery---secrets-in-plain-sight)
+- [1. Manual Discovery - Headers, Headers, Always Check Headers](#1-manual-discovery---headers-headers-always-check-headers)
+- [2. The Buster Series - Initiating with Gobuster `dir mode`](#2-the-buster-series---initiating-with-gobuster-dir-mode)
+- [3. The Buster Series - Unveiling Hidden Subdomains `dns mode`](#3-the-buster-series---unveiling-hidden-subdomains-dns-mode)
+- [4. FFuf Series - Subdomain Fuzzing Frenzy](#4-ffuf-series---subdomain-fuzzing-frenzy)
+- [5. The Buster Series - Fuzzing for Fun and Profit `fuzz mode`](#5-the-buster-series---fuzzing-for-fun-and-profit-fuzz-mode)
+
+
+## 0. Manual Discovery - Secrets in Plain Sight
 
 Your goal is to uncover a hidden flag by thoroughly exploring the site's structure.
 
@@ -69,7 +78,7 @@ curl http://web0x04.hbtn/robots.txt
 # User-agent: *
 # Disallow: /hidden-directory/
 # Disallow: /wp-admin/
-# 
+#
 # Sitemap: http://web0x04.hbtn/mpg-sitemap-switzerland-regions.xml
 # Sitemap: http://web0x04.hbtn/mpg-sitemap-switzerland-places-index.xml
 # Sitemap: http://web0x04.hbtn/mpg-sitemap-world-cities.xml
@@ -199,7 +208,7 @@ For every word such as admin, Gobuster effectively checks `/admin` and `/admin.p
 Checking the result saved in `gobuster-root.txt`:
 
 ```bash
-cat gobuster-root.txt                                                           
+cat gobuster-root.txt
 # .htaccess            (Status: 200) [Size: 385]
 # _                    (Status: 301) [Size: 0] [--> http://web0x04.hbtn/tour-to-the-beautiful-city-of-mpg_city-in-mpg_country/]
 # 0                    (Status: 301) [Size: 0] [--> http://web0x04.hbtn/0/]
@@ -223,7 +232,7 @@ cat gobuster-root.txt
 # xmlrpc.php           (Status: 405) [Size: 42]
 ```
 
-Most of the directories found are common WordPress directories, but directories `0`, `create` 
+Most of the directories found are common WordPress directories, but directories `0`, `create`
 and `payment_gateway` might need further investigation with second gobuster run to find the filename.
 
 After a half-a-day of unsuccessful busting attempts with different wordlists I've discovered that
@@ -303,10 +312,10 @@ gobuster dir \
 ```bash
 curl http://web0x04.hbtn/payment_gateway/hiddenflag.php
 
-# Flag found! Congratulations. Here is your flag:  50a99edc175c95e7cfb9a8a56a2dc3de  
+# Flag found! Congratulations. Here is your flag:  50a99edc175c95e7cfb9a8a56a2dc3de
 
 # checking if there is a difference between the two flags
-cat 2-flag.txt 
+cat 2-flag.txt
 # 50a99edc175c95e7cfb9a8a56a2dc3de
 
 ```
@@ -428,7 +437,7 @@ ping -c 3 web0x04.hbtn
 # 64 bytes from web0x04.hbtn (10.42.8.228): icmp_seq=1 ttl=126 time=125 ms
 # 64 bytes from web0x04.hbtn (10.42.8.228): icmp_seq=2 ttl=126 time=31.2 ms
 # 64 bytes from web0x04.hbtn (10.42.8.228): icmp_seq=3 ttl=126 time=20.3 ms
-# 
+#
 # --- web0x04.hbtn ping statistics ---
 # 3 packets transmitted, 3 received, 0% packet loss, time 2002ms
 # rtt min/avg/max/mdev = 20.287/58.889/125.231/47.119 ms
@@ -459,7 +468,7 @@ dig @web0x04.hbtn web0x04.hbtn SOA +short
 
 
 ```bash
-dig @web0x04.hbtn web0x04.hbtn SOA       
+dig @web0x04.hbtn web0x04.hbtn SOA
 
 # ; <<>> DiG 9.20.22-1-Debian <<>> @web0x04.hbtn web0x04.hbtn SOA
 # ; (1 server found)
@@ -468,14 +477,14 @@ dig @web0x04.hbtn web0x04.hbtn SOA
 # ;; ->>HEADER<<- opcode: QUERY, status: REFUSED, id: 44339
 # ;; flags: qr rd; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
 # ;; WARNING: recursion requested but not available
-# 
+#
 # ;; OPT PSEUDOSECTION:
 # ; EDNS: version: 0, flags:; udp: 1232
 # ; COOKIE: 2d2e48f10723e32d010000006a60ac9f59d334703719563d (good)
 # ; EDE: 18 (Prohibited)
 # ;; QUESTION SECTION:
 # ;web0x04.hbtn.                  IN      SOA
-# 
+#
 # ;; Query time: 16 msec
 # ;; SERVER: 10.42.8.228#53(web0x04.hbtn) (UDP)
 # ;; WHEN: Wed Jul 22 07:42:22 EDT 2026
@@ -534,14 +543,14 @@ dig @web0x04.hbtn web0x04.hbtn NS
 # ;; ->>HEADER<<- opcode: QUERY, status: REFUSED, id: 60395
 # ;; flags: qr rd; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
 # ;; WARNING: recursion requested but not available
-# 
+#
 # ;; OPT PSEUDOSECTION:
 # ; EDNS: version: 0, flags:; udp: 1232
 # ; COOKIE: a88dfb1b75773968010000006a60b61b0784c82c141f51da (good)
 # ; EDE: 18 (Prohibited)
 # ;; QUESTION SECTION:
 # ;web0x04.hbtn.                  IN      NS
-# 
+#
 # ;; Query time: 28 msec
 # ;; SERVER: 10.42.8.228#53(web0x04.hbtn) (UDP)
 # ;; WHEN: Wed Jul 22 08:22:52 EDT 2026
@@ -572,7 +581,7 @@ dig @web0x04.hbtn web0x04.hbtn AXFR +noshort +comments +stats
 # ;; Got answer:
 # ;; ->>HEADER<<- opcode: QUERY, status: NOTAUTH, id: 25642
 # ;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
-# 
+#
 # ;; OPT PSEUDOSECTION:
 # ; EDNS: version: 0, flags:; udp: 1232
 # ; COOKIE: 3e21443e4bdf2655010000006a60b936bb257a7c8064086b (good)
@@ -741,10 +750,10 @@ cat /etc/hosts
 # ::1             localhost ip6-localhost ip6-loopback
 # ff02::1         ip6-allnodes
 # ff02::2         ip6-allrouters
-# 
+#
 # # 10.42.181.227 web0x01.hbtn
 # # 10.42.105.161 web0x02.hbtn
-# 
+#
 # 10.42.8.228  web0x04.hbtn
 ```
 
@@ -780,7 +789,7 @@ sudo sed -i.bak 's/^nameserver fd17:625c:f037:2::3/#&/' /etc/resolv.conf && cat 
 ### Step 11 — Re-run Gobuster with the clean resolver setup
 
 ```bash
-gobuster dns --domain web0x04.hbtn --resolver 10.42.8.228:53 --wordlist dns_wordlist.txt --threads 5           
+gobuster dns --domain web0x04.hbtn --resolver 10.42.8.228:53 --wordlist dns_wordlist.txt --threads 5
 # ===============================================================
 # Gobuster v3.8.2
 # by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
@@ -862,13 +871,13 @@ The most direct way to find out: actually request the page. Since `db.web0x04.hb
 ```bash
 curl -v -H "Host: db.web0x04.hbtn" http://10.42.8.228/
 # *   Trying 10.42.8.228:80...
-# * Established connection to 10.42.8.228 (10.42.8.228 port 80) from 10.8.0.2 port 51794 
+# * Established connection to 10.42.8.228 (10.42.8.228 port 80) from 10.8.0.2 port 51794
 # * using HTTP/1.x
 # > GET / HTTP/1.1
 # > Host: db.web0x04.hbtn
 # > User-Agent: curl/8.19.0
 # > Accept: */*
-# > 
+# >
 # * Request completely sent off
 # < HTTP/1.1 404 Not Found
 # < Server: nginx/1.22.1
@@ -876,7 +885,7 @@ curl -v -H "Host: db.web0x04.hbtn" http://10.42.8.228/
 # < Content-Type: text/html
 # < Content-Length: 153
 # < Connection: keep-alive
-# < 
+# <
 # <html>
 # <head><title>404 Not Found</title></head>
 # <body>
@@ -918,7 +927,7 @@ So the zone we should transfer is `db.web0x04.hbtn`. Let's do exactly that.
 ### Step 15 — Zone transfer against the real zone db.web0x04.hbtn
 
 ```bash
-dig @10.42.8.228 db.web0x04.hbtn AXFR       
+dig @10.42.8.228 db.web0x04.hbtn AXFR
 
 # ; <<>> DiG 9.20.22-1-Debian <<>> @10.42.8.228 db.web0x04.hbtn AXFR
 # ; (1 server found)
@@ -979,7 +988,7 @@ Target Domain: `web0x04.hbtn`
 ### Step 1 — Locate a suitable SecLists subdomain wordlist
 
 ```bash
-ls -la /usr/share/seclists/Discovery/DNS/ 2>/dev/null | grep -iE "subdomain|top1million|5000|110000"        
+ls -la /usr/share/seclists/Discovery/DNS/ 2>/dev/null | grep -iE "subdomain|top1million|5000|110000"
 -rw-r--r-- 1 root root  1426217 Sep 19  2025 bitquark-subdomains-top100000.txt
 -rw-r--r-- 1 root root 25319380 Sep 19  2025 bug-bounty-program-subdomains-trickest-inventory.txt
 -rw-r--r-- 1 root root  8285473 Sep 19  2025 combined_subdomains.txt
@@ -1027,16 +1036,16 @@ ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
      -fs 153 \
      -t 40
 
-#         /'___\  /'___\           /'___\       
-#        /\ \__/ /\ \__/  __  __  /\ \__/       
-#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
-#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
-#          \ \_\   \ \_\  \ \____/  \ \_\       
-#           \/_/    \/_/   \/___/    \/_/       
-# 
+#         /'___\  /'___\           /'___\
+#        /\ \__/ /\ \__/  __  __  /\ \__/
+#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\
+#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/
+#          \ \_\   \ \_\  \ \____/  \ \_\
+#           \/_/    \/_/   \/___/    \/_/
+#
 #        v2.1.0-dev
 # ________________________________________________
-# 
+#
 #  :: Method           : GET
 #  :: URL              : http://10.42.8.228/
 #  :: Wordlist         : FUZZ: /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt
@@ -1048,7 +1057,7 @@ ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt \
 #  :: Matcher          : Response status: 200-299,301,302,307,401,403,405,500
 #  :: Filter           : Response size: 153
 # ________________________________________________
-# 
+#
 sub                     [Status: 200, Size: 56, Words: 3, Lines: 2, Duration: 74ms]
 # :: Progress: [4989/4989] :: Job [1/1] :: 296 req/sec :: Duration: [0:00:18] :: Errors: 0 ::
 ```
@@ -1227,7 +1236,7 @@ curl -s -o nonexistent.host.html -w "status=%{http_code} size=%{size_download}\n
 
 # status=404 size=153
 
-curl -s -o nonexistent.html -w "status=%{http_code} size=%{size_download}\n" -H "Host: web0x04.hbtn" "http://10.42.8.228/nonexistent/hbtn-nonexistent" 
+curl -s -o nonexistent.html -w "status=%{http_code} size=%{size_download}\n" -H "Host: web0x04.hbtn" "http://10.42.8.228/nonexistent/hbtn-nonexistent"
 
 # status=404 size=53720
 ```
@@ -1335,16 +1344,16 @@ ffuf -w list_fuzz.txt \
      -t 5 \
      -p 0.1
 
-#         /'___\  /'___\           /'___\       
-#        /\ \__/ /\ \__/  __  __  /\ \__/       
-#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
-#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
-#          \ \_\   \ \_\  \ \____/  \ \_\       
-#           \/_/    \/_/   \/___/    \/_/       
-# 
+#         /'___\  /'___\           /'___\
+#        /\ \__/ /\ \__/  __  __  /\ \__/
+#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\
+#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/
+#          \ \_\   \ \_\  \ \____/  \ \_\
+#           \/_/    \/_/   \/___/    \/_/
+#
 #        v2.1.0-dev
 # ________________________________________________
-# 
+#
 #  :: Method           : GET
 #  :: URL              : http://10.42.8.228/FUZZ/hbtn-fuzz
 #  :: Wordlist         : FUZZ: /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/list_fuzz.txt
@@ -1357,7 +1366,7 @@ ffuf -w list_fuzz.txt \
 #  :: Matcher          : Response status: 200-299,301,302,307,401,403,405,500
 #  :: Filter           : Response size: 53720
 # ________________________________________________
-# 
+#
 # :: Progress: [47/47] :: Job [1/1] :: 1 req/sec :: Duration: [0:00:42] :: Errors: 0 ::
 ```
 
@@ -1381,16 +1390,16 @@ ffuf \
   -t 10 \
   -p 0.11
 
-#         /'___\  /'___\           /'___\       
-#        /\ \__/ /\ \__/  __  __  /\ \__/       
-#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
-#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
-#          \ \_\   \ \_\  \ \____/  \ \_\       
-#           \/_/    \/_/   \/___/    \/_/       
-# 
+#         /'___\  /'___\           /'___\
+#        /\ \__/ /\ \__/  __  __  /\ \__/
+#        \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\
+#         \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/
+#          \ \_\   \ \_\  \ \____/  \ \_\
+#           \/_/    \/_/   \/___/    \/_/
+#
 #        v2.1.0-dev
 # ________________________________________________
-# 
+#
 #  :: Method           : GET
 #  :: URL              : http://10.42.8.228/DIR/hbtn-FILE
 #  :: Wordlist         : DIR: /home/kali/dlh-cyber_security/web_application_security/0x04_content_discovery/list_fuzz.txt
@@ -1404,15 +1413,15 @@ ffuf \
 #  :: Matcher          : Response status: 200-299,301,302,307,401,403,405,500
 #  :: Filter           : Response size: 53720
 # ________________________________________________
-# 
+#
 # [Status: 200, Size: 86, Words: 10, Lines: 5, Duration: 3707ms]
 #     * DIR: fuzz
 #     * FILE: 2024
-# 
+#
 # [Status: 200, Size: 86, Words: 10, Lines: 5, Duration: 4484ms]
 #     * DIR: fuzz
 #     * FILE: 2024
-# 
+#
 # :: Progress: [2209/2209] :: Job [1/1] :: 1 req/sec :: Duration: [0:35:40] :: Errors: 37 ::
 
 ```
