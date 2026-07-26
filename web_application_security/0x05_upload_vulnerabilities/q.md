@@ -23,3 +23,21 @@ Identifying the correct subdomain sets the stage for deeper vulnerability analys
 2. For each subdomain that hosts an upload feature, manually inspect the page and attempt a benign file upload (e.g., a simple text file) to understand how the application processes uploads.
 3. Keep detailed notes on your findings for each subdomain, including the types of upload features found and any immediate indicators of potential vulnerabilities.
 
+
+
+## 1. Some filters are only client-sided !
+
+Having identified the vulnerable subdomain, your next challenge is to bypass the client-side file type filtering mechanism of the web application's upload feature.
+Your success in uploading a restricted file type will reveal a hidden Flag ⛳️ as proof of your accomplishment.
+
+- Target Endpoint: http://[vuln-subdomain].web0x05.hbtn/task1
+
+You will need to use this php command to read the flag: <?php readfile('FLAG_1.txt') ?>
+FLAG will only be generated if you upload a php file!
+
+**Useful Instructions**
+
+1. Use browser developer tools to inspect the upload form and any JavaScript code that validates file types. Look for patterns or keywords it checks against.
+2. Consider using tools like Burp Suite to intercept and modify the upload request, changing the file name or MIME type to bypass client-side checks.
+3. Explore different ways to initiate the file upload (e.g., drag-and-drop functionality) that might not trigger client-side validation as expected.
+4. Pay attention to any error messages or feedback from the server after attempting an upload. These messages can offer clues for refining your bypass technique.
