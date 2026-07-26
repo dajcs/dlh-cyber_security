@@ -413,10 +413,10 @@ curl -s http://web0x05.hbtn -H "Host: test-s3.web0x05.hbtn"
 ### save result
 
 ```bash
-echo test-s3 > 0-target.txt
+echo test-s3.web0x05.hbtn > 0-target.txt
 cat 0-target.txt
 
 git add .
-git commit -m "0-target.txt"
+git commit -m "0-target.txt with domain"
 git push
 ```
