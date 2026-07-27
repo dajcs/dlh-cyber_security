@@ -81,3 +81,26 @@ You will need to use this php command to read the flag: `<?php readfile('FLAG_3.
 2. Craft a file that begins with the magic numbers of an allowed file type but contains payload or code typical of a restricted file type. Tools like hex editors can help you modify the file content directly.
 3. Test your crafted file by attempting to upload it through the application's upload feature. Pay close attention to how the application responds to determine if your bypass was successful.
 4. If direct modification of magic numbers does not yield success, consider more advanced techniques such as embedding your malicious payload within a benign file in a way that does not affect the file's ability to pass as the benign type but still allows execution of the payload under certain conditions.
+
+
+---
+
+## 4. Does File Length matter ?
+
+This sophisticated security measure aims to prevent the upload of potentially malicious files by imposing a strict limit on the file size.
+Your objective is to bypass this restriction and successfully upload a file that exceeds the server-imposed limit, revealing a hidden `Flag` ⛳️ as a marker of your success.
+
+
+- Main Domain: http://[vuln-subdomain].web0x05.hbtn/task4
+
+There is also a another backdoor, just take a look at the response headers  \
+You will need to use this php command to read the flag: `<?php readfile('FLAG_4.txt') ?>`,  \
+FLAG will only be generated if you upload a php file!
+
+**Useful Instructions**
+
+1. Begin by understanding the server's file length restrictions. Attempt to upload files of varying sizes to pinpoint the exact limit imposed by the server-side validation.
+2. Explore compression techniques or file manipulation methods that can reduce the apparent size of your payload without compromising its functionality. Consider formats that support compression natively and can be decompressed by the application or server.
+3. Investigate alternative upload methods provided by the application that might not enforce the same file length checks as the primary upload feature. This could include APIs, legacy upload forms, or other indirect file submission functionalities.
+4. Leverage tools like Burp Suite to intercept and modify upload requests, experimenting with ways to either compress your payload further or trick the server into misjudging the file size (e.g., by manipulating HTTP headers related to content length).
+
