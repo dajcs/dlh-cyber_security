@@ -62,3 +62,22 @@ You will need to use this php command to read the flag: `<?php readfile('FLAG_2.
 3. Utilize tools like Burp Suite to intercept and modify your upload requests, carefully crafting the file names with special characters to test the server's validation logic.
 4. Keep an eye on the server's response to each upload attempt. A successful bypass might not always be explicitly confirmed by the application’s UI. Check for any changes in behavior or new functionalities accessible after your upload.
 
+
+## 3. What mystery the Magic Numbers Hide ?
+
+With client-side and basic server-side restrictions behind you, the challenge now escalates to bypassing server-side validation that inspects the content of uploaded files, specifically through magic numbers.
+Magic numbers are unique values at the beginning of files that identify the file format to the system.
+
+This task involves manipulating an uploaded file's magic numbers to pass it off as a benign type while maintaining its malicious functionality.
+Successfully fooling the server's content inspection will reveal another hidden `Flag` ⛳️.
+
+- Main Domain: http://[vuln-subdomain].web0x05.hbtn/task3
+
+You will need to use this php command to read the flag: `<?php readfile('FLAG_3.txt') ?>`, FLAG will only be generated if you upload a php file!
+
+**Useful Instructions**
+
+1. Research and understand the concept of magic numbers in file formats. Identify the magic numbers for both the file type you intend to upload and a benign file type that is allowed by the server.
+2. Craft a file that begins with the magic numbers of an allowed file type but contains payload or code typical of a restricted file type. Tools like hex editors can help you modify the file content directly.
+3. Test your crafted file by attempting to upload it through the application's upload feature. Pay close attention to how the application responds to determine if your bypass was successful.
+4. If direct modification of magic numbers does not yield success, consider more advanced techniques such as embedding your malicious payload within a benign file in a way that does not affect the file's ability to pass as the benign type but still allows execution of the payload under certain conditions.
