@@ -37,7 +37,7 @@ The following weaknesses concern the *language and requirements* of the existing
 | Weakness | Problem | Impact |
 |----------|---------|--------|
 | "All employees **should** use good passwords." | "Should" is advisory, not mandatory; "good" is subjective and undefined; scope is limited to "employees." | Requirement is unenforceable and open to interpretation. Contractors and vendors appear excluded, leaving gaps attackers can exploit. |
-| "use **good passwords**" | No measurable criteria — no minimum length, complexity, uniqueness, rotation, MFA, or prohibited-password rules. | Users choose weak, guessable passwords. There is no objective standard to test, audit, or enforce against. |
+| "use **good passwords**" | No measurable criteria – no minimum length, complexity, uniqueness, rotation, MFA, or prohibited-password rules. | Users choose weak, guessable passwords. There is no objective standard to test, audit, or enforce against. |
 | "**Don't share** them." | States a rule but provides no detail on storage, password managers, service/shared accounts, or consequences of sharing. | Ambiguity leads to unsafe workarounds (spreadsheets, sticky notes, shared logins). No accountability when sharing occurs. |
 | "**IT will handle security stuff.**" | Vague, informal, and undefined; "security stuff" assigns no concrete duties and no accountability to any named role. | Responsibilities fall through the cracks; no one owns monitoring, enforcement, or user support. Not auditable. |
 | "Report problems to **someone**." | No named contact, email address, phone number, ticketing system, or escalation path is provided. | Incidents go unreported or are reported to the wrong place, delaying response and increasing damage. |
@@ -63,7 +63,7 @@ The following is a complete rewrite using the organization's policy template. Br
 | Effective Date | 2026-09-01 |
 | Review Date | 2027-09-01 |
 | Policy Owner | Chief Information Security Officer (CISO) |
-| Approved By | [Name/Role — e.g., Chief Executive Officer] |
+| Approved By | [Name/Role – e.g., Chief Executive Officer] |
 | Classification | Internal |
 
 ---
