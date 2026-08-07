@@ -117,3 +117,30 @@ System requirements:
 - For CIA priority: In financial systems, which is worse - data leak, data modification, or system downtime? Consider regulatory requirements
 - For automated trading risks: Think about logic flaws, race conditions, and unauthorized rule modifications
 - For defense-in-depth: Consider transaction limits, anomaly detection, MFA, session management, and audit trails
+
+
+
+
+
+Please provide the answer to the task below as a downloadable markdown file:
+
+## 4. Cloud Storage Service (#advanced)
+
+A cloud storage service provides:
+- File upload and download
+- File sharing with other users
+- Public link generation
+- File versioning
+- Client-side and server-side encryption options
+
+**Questions**:
+
+1. **Map out the attack surface**. Identify all entry points and rank them by risk level.
+2. **A developer proposes storing encryption keys in the database** for convenience. Use threat modeling to explain why this is problematic. What STRIDE threats does this introduce?
+3. **Create a risk matrix** for the top 5 threats you've identified. Include likelihood, impact, and risk level.
+
+**Hints**:
+
+- For attack surface: Consider upload endpoints, sharing links, API endpoints, authentication flows, and admin interfaces
+- For encryption key storage: If keys are in the same database as encrypted data, what happens during a breach? Think about Tampering and Information Disclosure
+- For risk matrix: Use likelihood (1-5) × impact (1-5) to calculate risk scores

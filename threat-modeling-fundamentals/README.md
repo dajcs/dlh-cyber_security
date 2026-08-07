@@ -4,4 +4,5 @@
 1. [Healthcare Mobile App](1-healthcare_mobile_app.md)
 2. [IOT Smart Thermostat](2-iot_smart_thermostat.md)
 3. [Financial Trading Platform](3-financial_trading_platform.md)
+4. [Cloud Storage Service](4-cloud_storage_service.md)
 
