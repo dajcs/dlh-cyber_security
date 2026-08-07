@@ -325,3 +325,86 @@ Define roles and responsibilities:
 2. Incident Classification Matrix
 3. Communication Plan
 4. Incident Report Template
+
+
+
+
+
+
+---
+
+Please provide the answer to the task below in a downloadable markdown file:
+
+## Requirements
+
+### General
+- All policy documents should follow the provided templates
+- Each policy must include: Purpose, Scope, Policy Statement, Roles & Responsibilities, Enforcement
+
+### Documentation Standards
+- Clear and concise language (readable by non-technical staff)
+- Version control information
+- Approval and review dates
+- Contact information for questions
+
+## Task 4. Data Classification Policy
+
+**Objective**
+
+Create a Data Classification Policy that defines how data should be categorized and protected based on sensitivity.
+
+**Scenario**
+
+**Company**: HealthPlus Medical Group
+
+**Industry**: Healthcare
+
+**Data Types**:
+
+- Patient medical records (PHI)
+- Employee information (PII)
+- Financial data
+- Research data
+- Business operations data
+- Public marketing materials
+
+**Compliance Requirements**: HIPAA, GDPR, State privacy laws
+
+**Classification Levels**
+
+Create a policy with these classification levels:
+
+Level | Description | Examples
+------|-------------|---------
+PUBLIC | Approved for release | Marketing, website
+INTERNAL | Internal use only | Memos, org charts
+CONFIDENTIAL | Could cause harm | PII, financials
+RESTRICTED | Severe damage | PHI, credentials
+
+**Requirements**
+
+Your policy must define for EACH classification level:
+
+### 1. Handling Requirements
+
+Requirement | Public | Internal | Confidential | Restricted
+------------|--------|---------|-------------|-------------
+Labeling | [Y/N] | [Y/N] | [Y/N] | [Y/N]
+Encryption at Rest | [Y/N] | [Y/N] | [Y/N] | [Y/N]
+Encryption in Transit | [Y/N] | [Y/N] | [Y/N] | [Y/N]
+Access Control | [Type] | [Type] | [Type] | [Type]
+
+
+**Required Sections**
+
+1. **Labeling** - headers, file naming
+2. **Storage** - approved/prohibited locations
+3. **Transmission** - email, file transfer rules
+4. **Disposal** - paper shredding, media sanitization
+5. **Access Control** - who, how, reviews
+
+
+**Deliverables**
+
+1. Complete Data Classification Policy
+2. Quick Reference Guide (1-page summary for employees)
