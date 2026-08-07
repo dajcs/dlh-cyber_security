@@ -83,3 +83,71 @@ Using the policy template provided in `policy_template.pdf` , rewrite this as a 
 1. Part A table
 2. Part B table
 3. Part C complete rewritten policy
+
+
+
+
+
+
+
+
+
+
+---
+
+Please provide the answer to the task below in a downloadable markdown file:
+
+## Requirements
+
+### General
+- All policy documents should follow the provided templates
+- Each policy must include: Purpose, Scope, Policy Statement, Roles & Responsibilities, Enforcement
+
+### Documentation Standards
+- Clear and concise language (readable by non-technical staff)
+- Version control information
+- Approval and review dates
+- Contact information for questions
+
+## Task 1. Acceptable Use Policy
+
+**Objective**
+
+Create a complete Acceptable Use Policy (AUP) for a fictional company.
+
+**Scenario**
+
+**Company**: TechSecure Solutions Inc.
+
+**Industry**: Software Development
+
+**Employees**: 500
+
+**Locations**: 3 offices + remote workers
+
+**Systems**: Cloud-based development environment, corporate email, VPN, collaboration tools
+
+The company has recently experienced:
+
+- Employees using work email for personal purposes
+- Unauthorized software installations
+- Social media posts about confidential projects
+- Personal devices connecting to the corporate network without approval
+
+Management has requested a comprehensive AUP to address these issues.
+
+**Requirements**
+
+Create an AUP that covers ALL of the following areas:
+
+1. **Internet Usage** - browsing rules, personal use, monitoring
+2. **Email Usage** - acceptable use, retention
+3. **Software** - approved software, installation procedures
+4. **Social Media** - confidentiality, company representation
+5. **BYOD** - registration, security requirements
+6. **Data Handling** - storage, sharing, disposal
+
+**Deliverables**
+
+- Complete AUP document using `policy_template.pdf`.
+- Include: policy header, purpose, scope, enforcement, consequences, acknowledgment section.
