@@ -1,7 +1,7 @@
-# Data Classification — Quick Reference Guide
+# Data Classification – Quick Reference Guide
 
 **HealthPlus Medical Group** · Version 1.0 · Effective August 7, 2026
-*One-page summary — for the full rules, see the Data Classification Policy (HP-ISP-004).*
+*One-page summary – for the full rules, see the Data Classification Policy (HP-ISP-004).*
 
 ---
 
@@ -55,7 +55,7 @@
 
 ## If Something Goes Wrong
 
-**Suspect a lost device, wrong-recipient email, or a breach — especially involving PHI?**
+**Suspect a lost device, wrong-recipient email, or a breach – especially involving PHI?**
 Report it **immediately**. Fast reporting protects patients and helps us meet legal deadlines.
 
 📞 **Incident Response (24/7):** incident-response@healthplusmedical.example

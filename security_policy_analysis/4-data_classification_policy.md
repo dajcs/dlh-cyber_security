@@ -31,10 +31,10 @@
 
 For questions about this policy, data classification decisions, or to report a suspected misclassification or data incident:
 
-- **Security & Compliance Team** — security@healthplusmedical.example
-- **Privacy Officer (HIPAA/GDPR matters)** — privacy@healthplusmedical.example
-- **Help Desk (day-to-day handling questions)** — helpdesk@healthplusmedical.example, ext. 4357
-- **Suspected data breach (24/7)** — incident-response@healthplusmedical.example
+- **Security & Compliance Team** – security@healthplusmedical.example
+- **Privacy Officer (HIPAA/GDPR matters)** – privacy@healthplusmedical.example
+- **Help Desk (day-to-day handling questions)** – helpdesk@healthplusmedical.example, ext. 4357
+- **Suspected data breach (24/7)** – incident-response@healthplusmedical.example
 
 ---
 
@@ -53,7 +53,7 @@ This policy exists to:
 
 This policy applies to:
 
-- **All data** created, received, stored, processed, or transmitted by HealthPlus Medical Group, in any format — electronic, paper, or verbal.
+- **All data** created, received, stored, processed, or transmitted by HealthPlus Medical Group, in any format – electronic, paper, or verbal.
 - **All personnel**, including employees, contractors, temporary staff, volunteers, interns, business associates, and third-party vendors who access HealthPlus data or systems.
 - **All systems and locations** where HealthPlus data resides, including on-premises servers, cloud services, laptops, mobile devices, removable media, email, and physical files.
 
@@ -61,7 +61,7 @@ This policy covers the six data types handled by HealthPlus: patient medical rec
 
 ## 3. Policy Statement
 
-HealthPlus Medical Group classifies all data into one of four levels — **PUBLIC**, **INTERNAL**, **CONFIDENTIAL**, or **RESTRICTED** — based on the sensitivity of the information and the potential impact of its unauthorized disclosure. Every piece of data must be classified, and the protections applied to it must match its classification level.
+HealthPlus Medical Group classifies all data into one of four levels – **PUBLIC**, **INTERNAL**, **CONFIDENTIAL**, or **RESTRICTED** – based on the sensitivity of the information and the potential impact of its unauthorized disclosure. Every piece of data must be classified, and the protections applied to it must match its classification level.
 
 When data of different classifications is combined, the resulting collection must be protected at the **highest** classification level present. When classification is unclear, staff must treat the data as **CONFIDENTIAL** until the Security & Compliance Team confirms the correct level.
 
@@ -93,14 +93,14 @@ Labeling makes a document's sensitivity immediately visible so that everyone han
 
 ### 4.1 Requirements by Level
 
-- **PUBLIC** — Labeling optional. May be marked "PUBLIC" for clarity but not required.
-- **INTERNAL** — Must be labeled "INTERNAL."
-- **CONFIDENTIAL** — Must be labeled "CONFIDENTIAL."
-- **RESTRICTED** — Must be labeled "RESTRICTED." PHI must additionally be identifiable as protected health information.
+- **PUBLIC** – Labeling optional. May be marked "PUBLIC" for clarity but not required.
+- **INTERNAL** – Must be labeled "INTERNAL."
+- **CONFIDENTIAL** – Must be labeled "CONFIDENTIAL."
+- **RESTRICTED** – Must be labeled "RESTRICTED." PHI must additionally be identifiable as protected health information.
 
 ### 4.2 How to Label
 
-- **Electronic documents (Word, PDF, slides):** Place the classification label in the header or footer of every page (e.g., *"CONFIDENTIAL — HealthPlus Medical Group"*).
+- **Electronic documents (Word, PDF, slides):** Place the classification label in the header or footer of every page (e.g., *"CONFIDENTIAL – HealthPlus Medical Group"*).
 - **Emails:** Add the classification in the subject line prefix, e.g., `[RESTRICTED]` or `[INTERNAL]`.
 - **File naming:** Include the level in the file name for CONFIDENTIAL and RESTRICTED files where practical, e.g., `2026-Budget_CONFIDENTIAL.xlsx`.
 - **Physical documents:** Stamp or print the classification at the top of the first page and on folders/binders.
@@ -136,9 +136,9 @@ Transmission rules govern how data may be sent by email, file transfer, or other
 
 ### 6.1 Email
 
-- **PUBLIC / INTERNAL** — May be sent by standard company email. Internal data should not be forwarded to external parties without a business reason.
-- **CONFIDENTIAL** — Must be sent using encrypted email (TLS in transit). External transmission requires the approved secure-email/encryption feature. Verify the recipient address before sending.
-- **RESTRICTED (including PHI)** — Must be sent using the approved secure/encrypted email service or a secure portal. PHI must never be sent to personal email accounts. Include only the minimum necessary information. Never place PHI or credentials in an unencrypted email body or subject line.
+- **PUBLIC / INTERNAL** – May be sent by standard company email. Internal data should not be forwarded to external parties without a business reason.
+- **CONFIDENTIAL** – Must be sent using encrypted email (TLS in transit). External transmission requires the approved secure-email/encryption feature. Verify the recipient address before sending.
+- **RESTRICTED (including PHI)** – Must be sent using the approved secure/encrypted email service or a secure portal. PHI must never be sent to personal email accounts. Include only the minimum necessary information. Never place PHI or credentials in an unencrypted email body or subject line.
 
 ### 6.2 File Transfer
 
@@ -158,12 +158,12 @@ Data must be disposed of securely when it is no longer needed, in line with rete
 
 ### 7.1 Paper Records
 
-- **PUBLIC / INTERNAL** — Standard recycling is acceptable (INTERNAL may be recycled if it contains no personal data).
-- **CONFIDENTIAL / RESTRICTED** — Must be cross-cut shredded or placed in locked, secure-shredding bins. Never placed in regular trash or open recycling.
+- **PUBLIC / INTERNAL** – Standard recycling is acceptable (INTERNAL may be recycled if it contains no personal data).
+- **CONFIDENTIAL / RESTRICTED** – Must be cross-cut shredded or placed in locked, secure-shredding bins. Never placed in regular trash or open recycling.
 
 ### 7.2 Electronic Media and Devices
 
-- **CONFIDENTIAL / RESTRICTED** — Media must be sanitized using approved methods (e.g., NIST SP 800-88 compliant wiping) before reuse. Devices that cannot be reliably wiped must be physically destroyed.
+- **CONFIDENTIAL / RESTRICTED** – Media must be sanitized using approved methods (e.g., NIST SP 800-88 compliant wiping) before reuse. Devices that cannot be reliably wiped must be physically destroyed.
 - Hard drives, SSDs, USB drives, and backup media containing CONFIDENTIAL or RESTRICTED data must be sanitized or destroyed by IT, with a record of destruction kept for RESTRICTED media.
 - Deleting a file or emptying the recycle bin is **not** considered secure disposal.
 
@@ -173,7 +173,7 @@ For RESTRICTED data (especially PHI), retain a certificate or log of destruction
 
 ## 8. Access Control
 
-Access to data is granted on a **least-privilege** and **need-to-know** basis — staff receive only the access required to do their jobs.
+Access to data is granted on a **least-privilege** and **need-to-know** basis – staff receive only the access required to do their jobs.
 
 ### 8.1 Who May Access
 
@@ -215,7 +215,7 @@ Compliance with this policy is mandatory. Violations may result in disciplinary 
 
 - **Employees and contractors** who violate this policy are subject to HealthPlus's disciplinary procedures.
 - **Vendors and business associates** who violate this policy may have contracts terminated and may be reported to authorities where required.
-- Suspected or confirmed breaches of CONFIDENTIAL or RESTRICTED data — especially PHI — must be reported to the Security & Compliance Team immediately so that breach-notification obligations under HIPAA, GDPR, and state law can be met.
+- Suspected or confirmed breaches of CONFIDENTIAL or RESTRICTED data – especially PHI – must be reported to the Security & Compliance Team immediately so that breach-notification obligations under HIPAA, GDPR, and state law can be met.
 - Willful or negligent mishandling of PHI or PII may result in personal liability under applicable law.
 
 Compliance is monitored through access logs, periodic audits, and access reviews. Managers are responsible for ensuring their teams understand and follow this policy.

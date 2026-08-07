@@ -6,3 +6,5 @@
 3. [Incident Response Policy](3-incident_response_policy.md)
 4. [Data Classification Policy](4-data_classification_policy.md)
    - [Data Classification Policy Quick Reference](4-data_classification_policy_quick_ref.md)
+5. [Policy Review Exercise](5-policy_review_exercise.md)
+

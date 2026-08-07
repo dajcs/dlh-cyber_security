@@ -408,3 +408,105 @@ Access Control | [Type] | [Type] | [Type] | [Type]
 
 1. Complete Data Classification Policy
 2. Quick Reference Guide (1-page summary for employees)
+
+
+
+
+
+
+
+
+
+
+
+---
+
+Please provide the answer to the task below in a downloadable markdown file:
+
+## Requirements
+
+### General
+- All policy documents should follow the provided templates
+- Each policy must include: Purpose, Scope, Policy Statement, Roles & Responsibilities, Enforcement
+
+### Documentation Standards
+- Clear and concise language (readable by non-technical staff)
+- Version control information
+- Approval and review dates
+- Contact information for questions
+
+## Task 5. Policy Review Exercise (#advanced)
+
+**Objective**
+
+Conduct a comprehensive policy review and gap analysis against a compliance framework.
+
+**Scenario**
+
+You are a security consultant hired by **RetailMax Corporation** to assess their security policy program. The company is preparing for:
+
+- PCI-DSS certification (they process credit cards)
+- ISO 27001 certification
+- SOC 2 Type II audit
+
+They have provided you with their current policies (simulated below).
+
+**Current Policy Inventory**
+
+RetailMax has the following policies:
+
+Policy | Status
+-------|-------
+Information Security Policy | Active (2019)
+Password Policy | Active (2020)
+Acceptable Use Policy | Active (2021)
+Incident Response Policy | Missing
+Data Classification Policy | Missing
+Access Control Policy | Missing
+
+
+**Task Requirements**
+
+### Part A: Gap Analysis
+
+Create a gap analysis comparing current policies against PCI-DSS requirements.
+
+### Part B: Policy Maturity Assessment
+
+Assess the maturity of existing policies using this scale:
+
+Level | Description
+------|------------
+0 - Non-existent | No policy exists
+1 - Initial | Policy exists but ad-hoc
+2 - Developing | Policy documented but not consistently followed
+3 - Defined | Policy documented, communicated, and followed
+4 - Managed | Policy monitored and measured
+5 - Optimized | Policy continuously improved
+
+
+### Part C: Prioritized Recommendations
+
+Create a prioritized list of recommendations:
+
+Priority | Recommendation | Justification | Effort | Timeline
+---------|----------------|---------------|--------|---------
+1 | [Action] | [Why] | [H/M/L] | [Weeks]
+2 | [Action] | [Why] | [H/M/L] | [Weeks]
+… | … | … | … | …
+
+
+### Part D: Implementation Roadmap
+
+Create a 12-month implementation roadmap in 4 phases:
+
+**Deliverables**
+
+Create a document containing:
+
+1. **Executive Summary** (1 page)
+2. **Gap Analysis Table** (Part A)
+3. **Maturity Assessment** (Part B)
+4. **Prioritized Recommendations** (Part C)
+5. **Implementation Roadmap** (Part D)
+
