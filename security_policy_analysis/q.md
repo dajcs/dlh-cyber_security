@@ -214,3 +214,114 @@ Create a Password Policy that includes:
 
 1. Complete Password Policy using the template `policy_template.pdf`
 2. Technical standards
+
+
+
+
+
+
+
+---
+
+Please provide the answer to the task below in a downloadable markdown file:
+
+## Requirements
+
+### General
+- All policy documents should follow the provided templates
+- Each policy must include: Purpose, Scope, Policy Statement, Roles & Responsibilities, Enforcement
+
+### Documentation Standards
+- Clear and concise language (readable by non-technical staff)
+- Version control information
+- Approval and review dates
+- Contact information for questions
+
+## Task 3. Incident Response Policy
+
+**Objective**
+
+Create a comprehensive Incident Response Policy that defines how the organization handles security incidents.
+
+**NIST IR Lifecycle**
+
+Preparation -> Detection & Analysis -> Containment/Eradication/Recovery -> Post-Incident
+
+**Scenario**
+
+**Company**: GlobalTech Manufacturing
+
+**Size**: 2,000 employees across 5 countries
+
+**Industry**: Manufacturing with IoT/OT systems
+
+**Compliance**: ISO 27001, GDPR, Industry-specific regulations
+
+**Requirements**
+
+Create an Incident Response Policy covering:
+
+### 1. Incident Classification
+
+Define severity levels:
+
+| Severity | Description | Response Time | Examples   |
+|----------|-------------|---------------|------------|
+| Critical | [Define]    | [Time]        | [Examples] |
+| High     | [Define]    | [Time]        | [Examples] |
+| Medium   | [Define]    | [Time]        | [Examples] |
+| Low      | [Define]    | [Time]        | [Examples] |
+
+
+### 2. Incident Response Team
+
+Define roles and responsibilities:
+
+- Incident Response Manager
+- Security Analysts
+- IT Support
+- Legal Counsel
+- Communications/PR
+- Executive Sponsor
+
+### 3. Detection and Reporting
+
+- How incidents are detected
+- How to report an incident
+- What information to collect
+- Initial assessment procedures
+
+### 4. Response Procedures
+
+- **Containment**: Short-term, evidence preservation, long-term
+- **Eradication**: Root cause, threat removal, validation
+- **Recovery**: System restoration, testing, monitoring
+
+### 5. Communication Plan
+
+| Stakeholder            | When to Notify | Method   |
+|------------------------|----------------|----------|
+| Executive Management   | [When]         | [Method] |
+| Legal                  | [When]         | [Method] |
+| Regulators             | [When]         | [Method] |
+| Affected Users         | [When]         | [Method] |
+
+
+### 6. Evidence Handling
+
+- Chain of custody procedures
+- Evidence preservation
+- Documentation requirements
+
+### 7. Post-Incident Activities
+
+- Lessons learned process
+- Report requirements
+
+
+**Deliverables**
+
+1. Complete Incident Response Policy
+2. Incident Classification Matrix
+3. Communication Plan
+4. Incident Report Template
