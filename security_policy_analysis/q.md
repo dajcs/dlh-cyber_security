@@ -151,3 +151,66 @@ Create an AUP that covers ALL of the following areas:
 
 - Complete AUP document using `policy_template.pdf`.
 - Include: policy header, purpose, scope, enforcement, consequences, acknowledgment section.
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+Please provide the answer to the task below in a downloadable markdown file:
+
+## Requirements
+
+### General
+- All policy documents should follow the provided templates
+- Each policy must include: Purpose, Scope, Policy Statement, Roles & Responsibilities, Enforcement
+
+### Documentation Standards
+- Clear and concise language (readable by non-technical staff)
+- Version control information
+- Approval and review dates
+- Contact information for questions
+
+## Task 2. Password Policy
+
+**Objective**
+
+Create a comprehensive Password Policy aligned with current security best practices and NIST guidelines.
+
+**Scenario**
+
+**Company**: SecureBank Financial Services
+
+**Regulation**: Must comply with PCI-DSS, SOX, and FFIEC guidelines
+
+**Systems**:
+
+- Core banking system (critical)
+- Customer portal
+- Employee workstations
+- Administrative systems
+- Development environment
+
+
+**Requirements**
+
+Create a Password Policy that includes:
+
+1. **Password Requirements** - length, complexity, prohibited passwords
+2. **Password Management** - change/reset procedures, lockout, timeouts
+3. **MFA** - where required, approved methods
+4. **Storage** - hashing requirements, password managers
+5. **Privileged Accounts** - enhanced requirements, PAM
+
+**Deliverables**
+
+1. Complete Password Policy using the template `policy_template.pdf`
+2. Technical standards

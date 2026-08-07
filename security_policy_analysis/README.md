@@ -2,3 +2,4 @@
 
 0. [Password Policy Analysis](0-password_policy_analysis.md)
 1. [Acceptable Use Policy](1-acceptable_use_policy.md)
+2. [Password Policy](2-password_policy.md)
