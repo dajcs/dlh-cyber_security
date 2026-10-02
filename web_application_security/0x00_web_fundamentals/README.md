@@ -7,15 +7,11 @@
 
 ### Start cyber_websec_0x00
 
-For some reason 2 servers have been opened ?!
 
-#### server A
 - Hostname: web-0-80-23.cod-eu-west-3.hbtn.io
 - Local IP: 10.42.80.23
 
-#### server B
-- Hostname: web-0-173-56.cod-eu-west-3.hbtn.io
-- Local IP: 10.42.173.56
+
 
 
 
@@ -27,7 +23,6 @@ sudo vim /etc/hosts
 # check
 cat /etc/hosts | grep web0x00.*
 # 10.42.80.23     web0x00.hbtn
-# 10.42.173.56    web0x00b.hbtn
 ```
 
 - start openvpn
