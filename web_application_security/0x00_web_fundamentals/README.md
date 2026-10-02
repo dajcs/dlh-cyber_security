@@ -70,7 +70,7 @@ Your script should accept the `FORM DATA` as ARG 3 (`"$3"`).
 ```bash
 cat 1-host_header_injection.sh     
 # #!/bin/bash
-# curl -X POST "$2" -H "Host: $1" -d "$3"
+# curl -X -H "Host: $1" -d "$3" "$2"
 ```
 
 ```bash
