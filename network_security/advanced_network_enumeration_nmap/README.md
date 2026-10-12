@@ -7,3 +7,4 @@
 - 4-ask_scan.sh
 - 5-window_scan.sh
 - 6-custom_scan.sh
+- 7-nmap_default.sh
