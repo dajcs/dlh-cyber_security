@@ -4,3 +4,4 @@
 - 1-fin_scan.sh
 - 2-xmas_scan.sh
 - 3-maimon_scan.sh
+- 4-ask_scan.sh
