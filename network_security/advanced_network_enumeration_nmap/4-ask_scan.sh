@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo nmap -sA --reason --max-rtt-timeout 1000ms -p $2 $1
+sudo nmap -sA --reason --host-timeout 1000ms -p $2 $1
