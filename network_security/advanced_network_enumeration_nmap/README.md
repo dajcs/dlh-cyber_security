@@ -6,3 +6,4 @@
 - 3-maimon_scan.sh
 - 4-ask_scan.sh
 - 5-window_scan.sh
+- 6-custom_scan.sh
