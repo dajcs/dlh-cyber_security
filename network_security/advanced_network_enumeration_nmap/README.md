@@ -8,3 +8,4 @@
 - 5-window_scan.sh
 - 6-custom_scan.sh
 - 7-nmap_default.sh
+- 8-nmap_vulners.sh
