@@ -1,0 +1,28 @@
+# Nmap 7.80 scan initiated Tue Oct 13 13:04:35 2026 as: nmap -A -sV --script=banner,ssl-enum-ciphers,default,smb-enum-domains -oN service_enumeration_results.txt scanme.nmap.org
+Nmap scan report for scanme.nmap.org (45.33.32.156)
+Host is up (0.16s latency).
+Other addresses for scanme.nmap.org (not scanned): 2600:3c01::f03c:91ff:fe18:bb2f
+Not shown: 995 closed ports
+PORT     STATE    SERVICE    VERSION
+22/tcp   open     ssh        OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.13 (Ubuntu Linux; protocol 2.0)
+53/tcp   open     domain     (generic dns response: NOTIMP)
+| fingerprint-strings: 
+|   DNSVersionBindReqTCP: 
+|     version
+|_    bind
+80/tcp   open     http       Apache httpd 2.4.7 ((Ubuntu))
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: Go ahead and ScanMe!
+646/tcp  filtered ldp
+9929/tcp open     nping-echo Nping echo
+| banner: \x01\x01\x00\x180\xCB\xD6\xCDj\xCE\x10g\x00\x00\x00\x00@M*\x0F\
+|_xDA\xC2\xFCJ$\x0F\xFBZ\x90(\xF3\xC1\x18\x110\x85\x81\xF5\x8A\xBB\xBD...
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port53-TCP:V=7.80%I=7%D=10/13%Time=6ACE105F%P=x86_64-pc-linux-gnu%r(DNS
+SF:VersionBindReqTCP,20,"\0\x1e\0\x06\x81\x05\0\x01\0\0\0\0\0\0\x07version
+SF:\x04bind\0\0\x10\0\x03")%r(DNSStatusRequestTCP,E,"\0\x0c\0\0\x90\x04\0\
+SF:0\0\0\0\0\0\0");
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Tue Oct 13 13:08:42 2026 -- 1 IP address (1 host up) scanned in 246.91 seconds
