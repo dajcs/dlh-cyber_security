@@ -9,3 +9,4 @@
 - 6-custom_scan.sh
 - 7-nmap_default.sh
 - 8-nmap_vulners.sh
+- 9-vuln_scan.sh
