@@ -12,3 +12,4 @@
 - 9-vuln_scan.sh
 - 10-comprehensive_scan.sh
 - 11-vulnerability_scan.sh
+- 12-service_enumeration.sh
