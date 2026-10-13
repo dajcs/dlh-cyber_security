@@ -11,3 +11,4 @@
 - 8-nmap_vulners.sh
 - 9-vuln_scan.sh
 - 10-comprehensive_scan.sh
+- 11-vulnerability_scan.sh
