@@ -82,22 +82,7 @@ sudo systemctl status nessusd --no-pager
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### Additional commands for Nessus Troubleshooting
 
 ```bash
 

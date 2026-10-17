@@ -28,17 +28,8 @@ We are going to use our own Kali, which is already configured with a NAT interfa
 - **Password:** msfadmin
 
 
-## Task 0 - Web Application Scan on DVWA
+## [Task 0 - Web Application Scan on DVWA](./task0.md)
 
-**Lab Information**
-
-| Field           | Value |
-|-------          |-------|
-| Scanner         | Nessus Essentials on Kali Linux (192.168.56.10) |
-| Target          | DVWA on Ubuntu Server (192.168.56.20) |
-| Target URL      | http://192.168.56.20/dvwa |
-| Nessus Template | Web Application Tests |
-
-
+## [Task 1 - Credentialed Scan & Local System Audit](./task1.md)
 
 
