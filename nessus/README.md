@@ -34,4 +34,4 @@ We are going to use our own Kali, which is already configured with a NAT interfa
 
 ## [Task 2 - Comparative Analysis - Nessus Basic vs Nessus Web Application Tests](./task2.md)
 
-
+## [Task 3 - Remediation, Re-scan & Risk Reporting](./task3.md)
