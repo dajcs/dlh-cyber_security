@@ -632,13 +632,11 @@ These counts represent **finding instances**, as displayed in the Nessus severit
 
 Using the total finding instances from the severity table:
 
-$$
+```math
 \text{Reduction} = \frac{\text{Before} - \text{After}}{\text{Before}} \times 100
-$$
 
-$$
 = \frac{189 - 182}{189} \times 100 = \boxed{3.70\%}
-$$
+```
 
 | Metric | Before | After | Reduction |
 |---|---:|---:|---:|
@@ -646,18 +644,17 @@ $$
 | Distinct vulnerability entries | 70 | 65 | **7.14%** |
 
 The reduction in distinct vulnerability entries is:
-
-$$
+```math
 \frac{70 - 65}{70} \times 100 = \boxed{7.14\%}
-$$
+```
 
 ### Additional Security Insight
 
 The reduction in **Critical and High severity finding instances** is more significant than the overall numerical reduction:
 
-$$
+```math
 \frac{(10 + 6) - (8 + 4)}{10 + 6} \times 100 = \boxed{25\%}
-$$
+```
 
 That means the combined number of Critical and High finding instances decreased by **25%**, even though the overall count decreased by only **3.70%**.
 
