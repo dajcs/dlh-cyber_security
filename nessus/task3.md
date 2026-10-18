@@ -634,9 +634,12 @@ Using the total finding instances from the severity table:
 
 ```math
 \text{Reduction} = \frac{\text{Before} - \text{After}}{\text{Before}} \times 100
+```
 
+```math
 = \frac{189 - 182}{189} \times 100 = \boxed{3.70\%}
 ```
+
 
 | Metric | Before | After | Reduction |
 |---|---:|---:|---:|
