@@ -54,5 +54,9 @@ Open Firefox and go to the target machine IP address [http://net0x0a.hbtn:5000/]
 
 ## [M05 - M05_Kerberoasting_Summary.md](./M05_Kerberoasting_Summary.md)
 
+## [M06 - M06_Zerologon_CVE-2020-1472_Summary.md](./M06_Zerologon_CVE-2020-1472_Summary.md)
+
+## [M07 - M07_MongoDB_NoAuth_Data_Breach_Summary.md](./M07_MongoDB_NoAuth_Data_Breach_Summary.md)
+
 
 
