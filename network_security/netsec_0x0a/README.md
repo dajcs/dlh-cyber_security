@@ -48,3 +48,5 @@ Open Firefox and go to the target machine IP address [http://net0x0a.hbtn:5000/]
 
 ## [M02 - IP Camera Takeover (IoT Exploitation)](./M02_IP_Camera_Takeover_Summary.md)
 
+## [M03 - M03_WEP_WiFi_Crack_Summary.md](./M03_WEP_WiFi_Crack_Summary.md)
+
