@@ -1,10 +1,10 @@
 # M01 | Lobby Reconnaissance: Lab Summary
 
-**Mission:** M01 (LOW)  
-**Environment:** ACME Corp, authorized penetration-testing lab  
-**Kali IP:** `10.10.10.5`  
-**Target subnet:** `192.168.0.0/24`  
-**Primary infrastructure target:** `192.168.0.1` (`LOBBY-SW01.acme.corp`)  
+**Mission:** M01 (LOW)
+**Environment:** ACME Corp, authorized penetration-testing lab
+**Kali IP:** `10.10.10.5`
+**Target subnet:** `192.168.0.0/24`
+**Primary infrastructure target:** `192.168.0.1` (`LOBBY-SW01.acme.corp`)
 **Status:** **Completed, flag captured**
 
 ## Objectives
@@ -168,7 +168,6 @@ Nmap done: 5 IP addresses (5 hosts up) scanned in 18.94 seconds
 [+] Step 2/3 complete! Proceed to step 3.
 ```
 
-**Why the earlier commands were rejected:** The exercise's command validator expected the **TCP and UDP scanning options together**, with the relevant service/version flags and target scope. Separate TCP-only and UDP-only scans, or a generic default-port scan, did not satisfy that specific check.
 
 ---
 
