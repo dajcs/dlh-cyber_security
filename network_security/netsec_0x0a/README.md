@@ -48,15 +48,15 @@ Open Firefox and go to the target machine IP address [http://net0x0a.hbtn:5000/]
 
 ## [M02 - IP Camera Takeover (IoT Exploitation)](./M02_IP_Camera_Takeover_Summary.md)
 
-## [M03 - M03_WEP_WiFi_Crack_Summary.md](./M03_WEP_WiFi_Crack_Summary.md)
+## [M03 - Wi-Fi Crack (Wireless Security)](./M03_WEP_WiFi_Crack_Summary.md)
 
-## [M04 - M04_EternalBlue_MS17-010_Summary.md](./M04_EternalBlue_MS17-010_Summary.md)
+## [M04 - The Server Room Pivot (EternalBlue)](./M04_EternalBlue_MS17-010_Summary.md)
 
-## [M05 - M05_Kerberoasting_Summary.md](./M05_Kerberoasting_Summary.md)
+## [M05 - Active Directory (Kerberoasting)](./M05_Kerberoasting_Summary.md)
 
-## [M06 - M06_Zerologon_CVE-2020-1472_Summary.md](./M06_Zerologon_CVE-2020-1472_Summary.md)
+## [M06 - The Perfect 10.0 (Zerologon)](./M06_Zerologon_CVE-2020-1472_Summary.md)
 
-## [M07 - M07_MongoDB_NoAuth_Data_Breach_Summary.md](./M07_MongoDB_NoAuth_Data_Breach_Summary.md)
+## [M07 - Database Exposure (MongoDB)](./M07_MongoDB_NoAuth_Data_Breach_Summary.md)
 
-
+## [M08 - Apache RCE (Path Traversal)](./M08_Apache_Path_Traversal_RCE_Summary.md)
 
