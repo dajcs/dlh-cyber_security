@@ -52,4 +52,7 @@ Open Firefox and go to the target machine IP address [http://net0x0a.hbtn:5000/]
 
 ## [M04 - M04_EternalBlue_MS17-010_Summary.md](./M04_EternalBlue_MS17-010_Summary.md)
 
+## [M05 - M05_Kerberoasting_Summary.md](./M05_Kerberoasting_Summary.md)
+
+
 
