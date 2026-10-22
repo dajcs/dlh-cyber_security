@@ -13,3 +13,5 @@
 - 10-comprehensive_scan.sh
 - 11-vulnerability_scan.sh
 - 12-service_enumeration.sh
+
+[details](https://chatgpt.com/share/6ada7581-4cd8-83ed-9cda-6b7ede934d0e)
