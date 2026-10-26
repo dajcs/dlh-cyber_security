@@ -35,6 +35,9 @@ Solution:
 - prepare the answer:
 ```bash
 echo "status" > 0-vuln.txt
+git add .
+git commit -m "0-vuln.txt"
+git push
 ```
 
 
