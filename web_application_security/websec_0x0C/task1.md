@@ -431,13 +431,13 @@ http://web0x0c.hbtn/products/sort/advanced?by=ZZMARKER99
 Then inspect the page source \DevTools \ Inspector and search for `tracking-id`.
 
 ```html
-<div id="tracking-id" style="display:none">_N-JTXcFEOIkby45C19ukQ</div>
+<div id="tracking-id" style="display:none">LRWgWwqwG_HEgJHH1OJX8A</div>
 ```
 
 Now take the value of the `tracking-id` and append it to the URL:
 
 ```url
-http://web0x0c.hbtn/products/sort/api/track?t=_N-JTXcFEOIkby45C19ukQ
+http://web0x0c.hbtn/products/sort/api/track?t=LRWgWwqwG_HEgJHH1OJX8A
 ```
 
 and enjoy the result
@@ -452,8 +452,8 @@ and enjoy the result
 Save and verify:
 
 ```bash
-echo "FLAG{b4797b8faa98c8b5fca7634fab070de7}" > 2-flag.txt
+echo "b4797b8faa98c8b5fca7634fab070de7" > 2-flag.txt
 git add .
-git commit -m "2-flag.txt"
+git commit -m "22-flag.txt"
 git push
 ```
