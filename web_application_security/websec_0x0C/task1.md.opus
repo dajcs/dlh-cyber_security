@@ -1,0 +1,333 @@
+
+# Task 1. Reflected XSS - JavaScript Context
+
+
+- Start sandbox `cyber_websec_0x0c`.
+- Start openvpn.
+- Put IP address of the sandbox in `/etc/hosts` file.
+```bash
+echo "10.42.105.73 web0x0c.hbtn" | sudo tee -a /etc/hosts
+```
+
+
+## Stage 1 — Break out of the JS string
+
+ the key idea to hold onto is this: **you're not breaking out of an HTML tag here, you're breaking out of a JavaScript string.** A lot of apps carefully HTML-encode `<` and `>` but then drop your raw input straight into a `<script>` block — and inside a JS string, angle brackets are irrelevant. The character that matters is the quote delimiter.
+
+Before any payload, we need to see the exact syntax your input lands in. That drives everything else.
+
+**Step 1 — Recon: locate your marker inside the inline script**
+
+Action, in your browser with DevTools open:
+
+http://web0x0c.hbtn/products/sort?by=TESTINPUT123
+
+Then:
+1. `F12` → **Sources** tab, or just View Source with `Ctrl+U`.
+2. `Ctrl+F` for `TESTINPUT123`.
+3. Copy the JS script around it — especially the line that assigns the input to a variable.
+
+**What we're reading and why it matters:**
+- Is the marker inside something like `const sortBy = 'TESTINPUT123';`? That confirms we're in a JS-string context, not an HTML one.
+- Which quote wraps it — single `'` or double `"`? That is the exact character we'll use to close the string.
+- What sits *immediately after* the marker (`';`, `")`, etc.)? Those are the leftover characters you'll neutralize with a `//` comment so the parser stays happy.
+
+The "why" that the task wants you to internalize: the defense a developer *assumes* is protecting them (encoding `<` and `>`) does nothing in this context. Output encoding has to match the context the data lands in — a value going into a JS string needs JS-string escaping, not HTML entity encoding. That mismatch is the whole vulnerability.
+
+The script:
+
+```js
+<script>
+// VULNERABLE: sort_by injected directly into JavaScript context
+var currentSort = 'TESTINPUT123';
+var currentOrder = 'asc';
+
+function sortProducts() {
+    const container = document.getElementById('product-list');
+    const items = Array.from(container.children);
+
+    items.sort((a, b) => {
+        let valA = a.dataset[currentSort] || '';
+        let valB = b.dataset[currentSort] || '';
+
+        if (currentSort === 'price' || currentSort === 'rating') {
+            valA = parseFloat(valA);
+            valB = parseFloat(valB);
+        }
+
+        if (currentOrder === 'desc') {
+            return valA > valB ? -1 : 1;
+        }
+        return valA > valB ? 1 : -1;
+    });
+
+    items.forEach(item => container.appendChild(item));
+}
+
+sortProducts();
+</script>
+```
+
+
+Perfect — that snippet tells us everything. Your input lands here:
+
+```javascript
+var currentSort = 'TESTINPUT123';
+```
+
+We're inside a **single-quoted JavaScript string**. The delimiter is `'`. Immediately after the marker sit the leftover characters `';` — those are what we'll comment out so the parser stays happy.
+
+**Step 2 — Stage 1 breakout (harmless confirmation first)**
+
+Per the task's own advice, we prove execution with something harmless before wiring up C2 evidence. Build the payload in the three pieces the brief describes:
+
+```js
+close the string   +   run our JS        +   comment out leftovers
+'                  ;   console.log(...)   ;   //
+```
+
+Raw payload to put in the `by` parameter:
+
+```js
+';console.log('XSS-STAGE1-OK');//
+```
+
+URL to visit (same thing, URL-encoded so the special characters survive the address bar):
+
+
+http://web0x0c.hbtn/products/sort?by=%27%3Bconsole.log(%27XSS-STAGE1-OK%27)%3B%2F%2F
+
+
+**Why this will work — line by line.** After injection the script block becomes:
+
+```javascript
+var currentSort = '';console.log('XSS-STAGE1-OK');//';
+```
+
+- `'` → closes the string the developer opened. `currentSort` is now just an empty string.
+- `;` → ends that statement cleanly.
+- `console.log('XSS-STAGE1-OK')` → **our** statement, now executing as first-class code in the page, not as data.
+- `;//` → the `//` comments out the original trailing `';`, so there's no dangling-quote syntax error.
+
+The conceptual point the task wants you to be able to explain: the app presumably encodes `<` and `>` to stop HTML injection, but none of that helps here — we never used an angle bracket. We escaped using the **quote**, because the sink is a JS string, not HTML. Encoding has to match the output context; this one doesn't, so the input becomes executable code.
+
+
+<img src="./XSS_Task1_Stage1_Try1.png " alt="XSS_Task1_Stage1_Try1" width="800">
+
+
+
+```javascript
+var currentSort = '&#39;;console.log(&#39;XSS-STAGE1-OK&#39;);//';
+```
+
+The quotes came back as `&#39;` — the **HTML entity** for a single quote. So nothing executed (no `XSS-STAGE1-OK` in the Console, no syntax error — the whole thing is still one inert string).
+
+**This is the single most important lesson in the entire task, so let's sit with it.** The developer applied **HTML entity encoding** to the input. \
+That's the "correct" defense... for an HTML context. \
+But our input doesn't land in HTML — it lands inside a **JavaScript string**. And the JavaScript parser doesn't interpret `&#39;` as a quote. To the JS engine, `&#39;` is just six literal characters: ampersand, hash, three, nine, semicolon. It never terminates the string, so the breakout fails.
+
+That's the whole thesis the task wants you to be able to explain without Google: **output encoding must match the context the data lands in.** \
+HTML-encoding a value that flows into a JS string is a mismatch — it looks like security but provides none against the right technique. (And conversely, this is *why output encoding differs from input validation*: the server didn't reject our input, it transformed it — but transformed it for the wrong grammar.)
+
+The tracking-id is readable through the Inspector:
+
+```html
+<div id="tracking-id" style="display:none">WNW0x2_JS0-QEWXvltkSEQ</div>
+```
+
+That hidden `tracking-id` element is very likely where the token lives. But let's earn it through the actual vulnerability rather than just reading it off the DOM, because the task explicitly wants execution confirmed and the token pulled from `/products/sort/api/track`.
+
+**Step 3 — Defeat the quote filter (this is what Stage 2 is about)**
+
+Since literal `'` gets turned into `&#39;`, we need a breakout that **doesn't rely on a raw quote character at all**. \
+The cleanest route in a JS-string context: a **newline**. A raw line break inside a single-quoted JS string is itself a syntax error that terminates the string — the parser can't span an unescaped newline — so it forces the string closed without us ever typing a quote.
+
+
+
+**How a newline breaks the string**
+
+A single-quoted JavaScript string literal cannot span a raw, unescaped line break. The spec treats a literal `LineTerminator` inside a `'...'` as the end of the token — the parser throws, but critically, it throws *after* ending the string, which means whatever we put on the next line is parsed as fresh code. So the newline does the job the filtered `'` couldn't: it terminates the string without ever typing a character the HTML-encoder is watching for.
+
+The filter only transforms `'` `"` `<` `>` into entities. It does **not** touch a newline. So we smuggle the breakout in as an actual line break.
+
+**How to encode a newline in the URL**
+
+A raw newline is `%0A` in URL encoding. That's the piece the address bar/HTTP layer turns back into a real line break before it reaches the vulnerable variable.
+
+**The payload**
+
+Raw intent (three lines):
+```
+TESTINPUT
+console.log('XSS-STAGE2-OK')
+//
+```
+
+As a `by` parameter value, URL-encoded:
+
+[http://web0x0c.hbtn/products/sort?by=%0Aconsole.log(%27XSS-STAGE2-OK%27)%0A%2F%2F](http://web0x0c.hbtn/products/sort?by=%0Aconsole.log(%27XSS-STAGE2-OK%27)%0A%2F%2F)
+
+
+**What the script block should become after injection:**
+```javascript
+var currentSort = '
+console.log('XSS-STAGE2-OK')
+//';
+```
+
+Walking it through:
+- The raw newline after the opening `'` forces the `currentSort` string to terminate (unterminated-string behavior).
+- `console.log('XSS-STAGE2-OK')` is now on its own line as executable code. (The inner quotes here will likely come back as `&#39;` again — that's fine for *reasoning about execution*, but it may break this specific test. See the note below.)
+- `//` comments out the trailing `';` the developer left behind.
+
+
+<img src="./XSS_Task1_Stage2_Try1.png" alt="XSS_Task1_Stage2_Try1" width="800">
+
+
+**One thing to watch — and it's instructive:** the filter will still encode the quotes *inside* `console.log('...')`. So this exact line may not run cleanly either. That's deliberate on the lab's part — it's pushing you toward a payload that **needs no quote characters at all.** A classic quote-free primitive is:
+
+```javascript
+console.log(document.domain)
+```
+
+
+
+The cleaner Stage 2 test is:
+
+```
+http://web0x0c.hbtn/products/sort?by=%0Aconsole.log(document.domain)%0A%2F%2F
+```
+
+<img src="./XSS_Task1_Stage2_Try2.png" alt="XSS_Task1_Stage2_Try2" width="800">
+
+
+
+
+Step forward: the Console shows a syntax error:
+
+```
+Uncaught SyntaxError: '' string literal contains an unescaped line break
+```
+
+That error is proof the newline survived and reached the JS engine. The server passed `%0A` through as a real line break — exactly what we wanted. The string **is** being terminated by the newline. As the task says: *"If you see a syntax error in Console, you are close."* You are close.
+
+The second screenshot's Sources view:
+```javascript
+var currentSort = '
+console.log(document.domain) //'; ...
+```
+
+So the breakout happened. The reason `document.domain` still didn't print is that the error fires on the **first** line — the engine hits the unterminated `'` string, throws, and aborts parsing the whole `<script>` block before it ever reaches the `console.log` line. We split the string, but we left the parser in an error state. We need the first line itself to be *valid* once the string closes.
+
+**The fix — make the leftover valid**
+
+The problem is the opening `var currentSort = '` followed immediately by a newline. That lone `'` with nothing to close it on its own line is the syntax error. We want the opening quote to find a *closing* quote on the same line, so line 1 parses cleanly, and *then* our code runs on the next line.
+
+The trick: supply a closing quote for the developer's opening quote — but we can't type `'` (filter turns it into `&#39;`). However, we *can* let the engine's own string-continuation rule help us. A backslash `\` at the end of a line is a **line continuation** inside a JS string — but that's the opposite of what we want here.
+
+Let me show you the clean path that sidesteps the quote filter entirely. Instead of fighting to balance the quote, we feed input where **line 1 becomes a complete, valid statement on its own.** The developer's code is:
+
+```javascript
+var currentSort = '‹OURINPUT›';
+```
+
+If our input *starts* with a newline, line 1 is `var currentSort = '` — broken. So instead, don't lead with the newline. Lead with something that legally closes the string. The only string-terminator we have without a raw quote is... another newline won't help line 1.
+
+Here's the realization the lab is steering to: **you cannot cleanly balance that quote without a quote character.** That's *by design* — it's why Stage 2's hint says "escape the escaping mechanism" (the backslash route), and Stage 3's says "close the `</script>` block entirely." The newline got you a confirmed breakout and a confirmed parser error, which demonstrates the vulnerability, but to get **clean execution** you need one of those two levers.
+
+
+The backslash route is the heart of Stage 2, and it's a genuinely elegant trick. Let us build the reasoning first, because this one only makes sense once you see what the filter is *not* touching.
+
+**The insight: the filter encodes quotes, but it leaves the backslash alone**
+
+Recall what the filter does: it turns `'` `"` `<` `>` into HTML entities. It does **not** encode the backslash `\`. That's the gap.
+
+Now look at the developer's template again. The input (`X`) lands between two quotes the developer wrote:
+
+```javascript
+var currentSort = 'X';
+```
+
+The opening `'` is the developer's. The closing `'` is also the developer's. We can't add our own quotes (they get encoded) — but we can control what the developer's **closing** quote does, by ending the input with a backslash:
+
+```javascript
+var currentSort = 'X\';
+```
+
+In JavaScript, `\'` is an **escaped quote** — a literal apostrophe *inside* the string, not a string terminator. So the developer's closing `'` no longer closes the string. The string now runs on, looking for the *next* quote to terminate it... which is the `'` at the very end of the line (the one before the final `;` in `= '...';` — wait, there's only one trailing quote). Let's trace it precisely.
+
+**Trace with a trailing backslash**
+
+If the input is exactly `\` (one backslash), the line becomes:
+
+```javascript
+var currentSort = '\';
+```
+
+- Opening `'` starts the string.
+- `\'` → escaped apostrophe, a literal character *in* the string.
+- `;` → now *inside* the string (it's after the escaped quote, before any real terminator).
+- End of line, end of `<script>`... the string is never closed → unterminated string error again.
+
+So a lone backslash just shifts the problem. The real move is to **escape the closing quote AND then provide our own statement, terminating with a comment** — using the fact that once we've escaped the developer's quote, the *rest of that line* is ours to shape.
+
+**The working Stage 2 payload**
+
+The standard construction is: backslash (eats the dev's closing quote) + `;` + your code + `//`. Trace it:
+
+Our input:
+```
+\;console.log(document.domain)//
+```
+
+Resulting line:
+```javascript
+var currentSort = '\;console.log(document.domain)//';
+```
+
+Hmm — trace carefully: `'\;console.log(document.domain)//'` — the `\;` escapes the `;`? No. `\` only escapes the *next* character. Here the next char after `\` is `;`, giving `\;` which in a string is just `;`. The string then continues through all the text until the dev's trailing `'` closes it. **That doesn't execute either.**
+
+So a single trailing quote in the template can't be beaten by one backslash. This is the crucial subtlety — and it depends entirely on **how many quotes the developer wrote after the injection point.** Let us not guess. Look at our Stage 2 source:
+
+```javascript
+var currentSort = '‹our input›';
+var currentOrder = 'asc';
+```
+
+There are **more quotes on the following lines** (`'asc'`). That's the key. When you escape the closing quote of `currentSort`, the string hunts forward and consumes everything up to the **next real quote**, which is the opening `'` of `'asc'`. That flips which quotes are "string" and which are "code" — and the text *between* them (`; var currentOrder = `) becomes live JavaScript.
+
+So the payload needs to: escape the `currentSort` closing quote, then let the string swallow up to `'asc'`'s first quote, and arrange for the code to sit in the now-exposed region. The construction:
+
+Your input:
+```
+\';console.log(document.domain);var x='
+```
+
+Let's trace the full result:
+```javascript
+var currentSort = '\';console.log(document.domain);var x='';
+var currentOrder = 'asc';
+```
+
+Step by step:
+- `'\'` → `\'` is an escaped quote, so the string **keeps going** past the dev's closing quote.
+- The string continues until the **next** `'` — which is the one you supplied in `var x='`. So `'\';console.log(document.domain);var x='` is now **one big string literal** assigned to `currentSort`. Ugly, but valid.
+- After that string closes, the parser sees `';` — wait, that leftover `';` on the same line. Let me re-trace against the *actual* trailing characters.
+
+Rather than guessing the precise leftover, let's read it straight from the lab — one quick confirmation step makes the final payload exact instead of approximate.
+
+Visiting this probe (input is a single backslash) :
+
+```
+http://web0x0c.hbtn/products/sort?by=%5C
+```
+
+That shows precisely how the backslash renders (does it survive as `\`, and what sits after it).
+
+Result:
+
+```javascript
+// VULNERABLE: sort_by injected directly into JavaScript context
+var currentSort = '\';
+var currentOrder = 'asc';
+```

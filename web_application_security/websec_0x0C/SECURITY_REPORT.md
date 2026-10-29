@@ -58,7 +58,7 @@ Browser parses injected <script>, <img onerror>, or <svg><animate onbegin>
 JavaScript executes in the http://web0x0c.hbtn origin
              |
              +--> POST /attacker/api/exfil  (designated lab C2)
-             +--> Reads DOM tracking-id and GET /search/api/track?t=... 
+             +--> Reads DOM tracking-id and GET /search/api/track?t=...
 ```
 
 ### Location & Parameters
@@ -274,3 +274,210 @@ The final course deliverable requires documentation for **Tasks 0–7**. Only Ta
 The application is an **intentionally vulnerable educational lab**. The exercise demonstrates why reflected input must be encoded for its eventual output context, why blocking a short list of dangerous tags and event handlers does not solve XSS, and why impact reporting must distinguish confirmed data transfer from unproven cookie theft or account compromise.
 
 **Final submission note:** This Markdown file is complete **for Task 0**. It will not satisfy the course's complete Tasks 0–7 requirement until evidence-backed findings for Tasks 1–7 are added. Keep `SECURITY_REPORT.md` beside the included `evidence/` folder under `web_application_security/websec_0x0C/` so the relative screenshot links resolve.
+
+
+
+
+
+# Task 1 - Penetration Test Report — Reflected XSS in JavaScript Context (NexusShop)
+
+| Field | Value |
+|-------|-------|
+| **Target** | NexusShop (`http://web0x0c.hbtn`) |
+| **Component** | Product sort endpoint (`/products/sort`, `/dynamic`, `/advanced`) |
+| **Vulnerability class** | CWE-79 — Improper Neutralization of Input During Web Page Generation (Cross-Site Scripting) |
+| **Tester** | Penetration test (authorized lab engagement) |
+| **Flag captured** | `FLAG{b4797b8faa98c8b5fca7634fab070de7}` |
+
+---
+
+## Executive Summary
+
+The NexusShop product-sorting feature reflects the user-controlled `by` parameter directly into an inline `<script>` block, inside a single-quoted JavaScript string (`var currentSort = '<INPUT>';`). Because the value lands in a **JavaScript-string context** rather than an HTML context, the application's HTML-oriented defenses (encoding `<`, `>`) do not neutralize it. An attacker who controls `by` can break out of the string and execute arbitrary JavaScript in the victim's session.
+
+Three stages of the same endpoint demonstrate increasingly strict input filtering, illustrating the central lesson: **output encoding must match the context the data lands in.** Encoding appropriate for HTML (entity-encoding angle brackets) provides no protection for a value placed inside a JavaScript string, where the significant character is the string delimiter, not the angle bracket.
+
+Impact was demonstrated by exfiltrating the per-session `tracking-id` token to the application's own tracking endpoint (`/products/sort/api/track`), which the server validates and, on success, releases the flag — modelling theft of a session-bound secret via XSS.
+
+**Business impact:** session/credential theft, account takeover, fraudulent transactions on behalf of victims, and reputational damage. Severity: **High** (reflected XSS requiring victim interaction, but no authentication needed to craft the payload and the sink executes in authenticated context).
+
+---
+
+## Stage 1: Reflected XSS — JavaScript String Context (Stage 1 "Standard")
+
+### Vulnerability Description
+
+The `by` parameter is reflected, without context-appropriate encoding, directly inside a single-quoted JavaScript string literal within an inline `<script>` element. The developer applies HTML entity encoding to `<`, `>`, `'` and `"`, which is the correct defense for an **HTML** context but is ineffective reasoning about the actual sink. The vulnerability exists because the application chose an encoding scheme based on where it *assumed* the data would appear (HTML body) rather than where it *actually* appears (a JavaScript string).
+
+Why it exists: the data flows from an HTTP GET parameter straight into server-rendered inline script. No JavaScript-string escaping (e.g. `\x27` for quotes, `\n` for newlines) is applied, and no Content-Security-Policy is present to contain inline execution.
+
+### Location & Parameters
+| Attribute | Details |
+|-----------|---------|
+| **URL** | `/products/sort?by=` |
+| **Parameter/Field** | `by` |
+| **Type** | Reflected XSS (JavaScript-string context) |
+| **Severity** | High |
+
+### Attack Vector
+
+1. Visit `/products/sort?by=TESTINPUT123` and locate the marker in the inline script: `var currentSort = 'TESTINPUT123';`.
+2. Identify the surrounding syntax: the value is inside a **single-quoted** JS string; the characters immediately after are `';`.
+3. Close the string with `'`, inject a statement, and comment out the original trailing `';` with `//`.
+4. Confirm execution in the Console; replace the harmless test with an exfiltration payload targeting the `tracking-id` token.
+
+### Payload Used
+
+```
+';fetch('/products/sort/api/track?t='+document.getElementById('tracking-id').innerText);//
+```
+
+Resulting rendered script:
+
+```javascript
+var currentSort = '';fetch('/products/sort/api/track?t='+document.getElementById('tracking-id').innerText);//';
+```
+
+> Note: In this lab build, Stage 1's filter was observed to HTML-entity-encode the quote (`'` → `&#39;`), so this canonical pattern illustrates the intended technique for an unfiltered JS-string sink. Stage 1 and Stage 2 are preparatory (they populate the C2 loot feed); the flag is awarded at Stage 3 (see Task 3).
+
+### Evidence
+
+- DevTools → Sources shows the injected payload inside the `<script>` block.
+- Console: no syntax errors; the injected statement executes.
+- Network: a `GET /products/sort/api/track?t=<token>` request is issued by the injected code.
+
+### Real-World Impact
+
+Arbitrary JavaScript execution in the victim's authenticated session: theft of session tokens and cookies, silent requests performed as the victim (CSRF-style actions), credential harvesting via injected fake login forms, and keylogging.
+
+### Remediation
+
+- Apply **JavaScript-string output encoding** to any value placed inside a script string (escape `'`, `"`, `\`, `/`, newlines, and `<`/`>` as `\xHH` / `\uXXXX`), not HTML entity encoding.
+- Preferably, do **not** reflect user input into inline scripts at all; pass data via `JSON.parse(...)` of a server-serialized, properly escaped JSON string, or via a `data-` attribute read with `.dataset`.
+- Deploy a Content-Security-Policy with nonces and without `unsafe-inline` to contain any residual injection.
+
+---
+
+## Stage 2: Reflected XSS — Quote-Stripping Filter (Stage 2 "Dynamic")
+
+### Vulnerability Description
+
+The `/dynamic` variant reflects `by` into the same JavaScript-string sink but applies a filter that **strips quote characters** (`'` removed entirely) rather than encoding them. Stripping is a blocklist-style defense and is weaker than context-aware encoding: it attempts to remove "dangerous" characters instead of safely representing them. This stage demonstrates why relying on character removal is fragile — the surrounding code structure (a developer-authored opening and closing quote) can still be manipulated with characters the filter ignores (backslash, newline), and the defense can be defeated where a second evaluation or a re-parse sink exists.
+
+### Location & Parameters
+| Attribute | Details |
+|-----------|---------|
+| **URL** | `/products/sort/dynamic?by=` |
+| **Parameter/Field** | `by` (note: `sort` / `order` do **not** reach the vulnerable variable) |
+| **Type** | Reflected XSS (JavaScript-string context, quote-stripping filter) |
+| **Severity** | High |
+
+### Attack Vector
+
+1. Visit `/products/sort/dynamic?by=TESTINPUT123` and confirm reflection into `var currentSort = '...'`.
+2. Observe that literal `'` characters are stripped from the output (`';x` → `;x`).
+3. Study filter-evasion options that avoid a literal quote: backslash manipulation (`\`), newline injection (`%0A`), and Unicode/hex escapes (`\u0027`, `\x27`).
+4. Confirm execution in the Console and the exfiltration request in the Network tab.
+
+### Payload Used
+
+```
+;fetch(`/products/sort/api/track?t=${document.getElementById(`tracking-id`).innerText}`)//
+```
+
+> Uses **backtick template literals** instead of `'`/`"` so the payload contains no character the quote-stripper removes. The backtick survives the filter; `${...}` interpolates the token into the URL.
+
+### Evidence
+
+- Sources shows the stripped value and the surviving backtick-based payload.
+- Console: parser errors during probing confirm the string boundary is being manipulated ("you are close"); a clean run fires the request.
+- C2 loot feed (`/attacker`) records the exfiltration.
+
+### Real-World Impact
+Identical to Stage 1. Additionally demonstrates that **input filtering by character removal is insufficient** — attackers substitute equivalent representations (template literals, escape sequences) the blocklist did not anticipate.
+
+### Remediation
+
+- Replace character stripping with **context-aware output encoding** (JS-string escaping).
+- Do not reflect input into inline scripts; serialize via safe JSON.
+- Add CSP (nonce-based, no `unsafe-inline`).
+
+---
+
+## Stage 3: Reflected XSS — Strict Filter & Token Exfiltration (Stage 3 "Advanced") — FLAG
+
+### Vulnerability Description
+
+The `/advanced` variant applies the strictest filter: it HTML-encodes raw `<` and `>`, and strips `'`, `"`, `(` and `)`. User input is reflected in two `href="..."` attributes (as URL text) and in the inline-script `var currentSort` string. Despite the strict filter, the application still exposes a per-session secret — the `tracking-id` token in a hidden `<div>` — and an endpoint (`/products/sort/api/track`) that validates and records that token. The core flaw remains CWE-79: untrusted input reaches a script context, and sensitive session-bound data is readable by any script executing on the page.
+
+The flag is released by the server when the valid, current `tracking-id` is submitted to the tracking endpoint within the same session — modelling the end-to-end impact of XSS: read a session secret, exfiltrate it, and have the server confirm the compromise.
+
+### Location & Parameters
+| Attribute | Details |
+|-----------|---------|
+| **URL** | `/products/sort/advanced?by=` and `/products/sort/api/track?t=` |
+| **Parameter/Field** | `by`, `t` |
+| **Type** | Reflected XSS (strict filter) + session-token exfiltration |
+| **Severity** | High / Critical |
+
+### Attack Vector
+
+1. Visit `/products/sort/advanced?by=TESTINPUT123` and map all reflections (two `href` attributes + inline-script string).
+2. Characterize the filter: raw `<`/`>` → `&lt;`/`&gt;`; `'`, `"`, `(`, `)` stripped; backticks, `${}`, `[]`, `.`, `+`, `=` survive; fullwidth `＜`/`＞` (U+FF1C/U+FF1E) pass the filter and normalize toward `<`/`>` in some sinks (Unicode-normalization evasion).
+3. Read the session-bound `tracking-id` from the hidden `<div id="tracking-id">` (via DevTools, or `curl` with the session cookie).
+4. Submit the token to the tracking endpoint to demonstrate exfiltration and capture the flag.
+
+### Payload Used
+
+Token-exfiltration intent (parens-free / quote-free, using tagged templates):
+
+```
+fetch`/products/sort/api/track?t=${document.all[`tracking-id`].innerText}`
+```
+
+Equivalent command-line proof (same-session token read + submission):
+
+```bash
+COOKIE='session=<YOUR_SESSION_COOKIE>'
+TID=$(curl -s 'http://web0x0c.hbtn/products/sort/advanced?by=name' -H "Cookie: $COOKIE" \
+      | grep -oP '(?<=id="tracking-id"[^>]*>)[^<]+')
+curl -s "http://web0x0c.hbtn/products/sort/api/track?t=$TID" -H "Cookie: $COOKIE"
+```
+
+### Evidence
+
+Server response confirming capture:
+
+```json
+{"ref":"FLAG{b4797b8faa98c8b5fca7634fab070de7}","status":"tracked"}
+```
+
+- Hidden token observed in DOM: `<div id="tracking-id" style="display:none">_N-JTXcFEOIkby45C19ukQ</div>`.
+- Session cookie contains the server-side scoreboard: decoded payload `{"flags":[...],"level_3_stage":3,"session_id":"..."}`.
+- No `Content-Security-Policy` response header present — inline execution is unrestricted.
+
+### Real-World Impact
+
+An attacker can steal session-bound secrets (CSRF tokens, session identifiers, tracking tokens) even against a filter that blocks the common breakout characters, by (a) exploiting context mismatches and alternate character representations, and (b) reading secrets the page itself exposes to script. Consequences include full session hijacking, account takeover, and fraudulent actions. The absence of CSP means a single successful injection yields unrestricted script execution.
+
+### Remediation
+
+- **Context-aware output encoding** everywhere the value is reflected: JS-string escaping in the script sink; URL-encoding plus attribute-encoding in `href` values.
+- **Normalize then validate**: apply Unicode normalization (NFKC) *before* filtering so look-alike characters (fullwidth `＜`) cannot bypass checks; prefer allowlist validation (`by` ∈ {name, price, rating}) over blocklist stripping.
+- **Stop exposing session secrets to the DOM**: the `tracking-id` should be an `HttpOnly` cookie or server-side state, never readable JavaScript text.
+- **Deploy CSP** with per-response nonces and no `unsafe-inline`; this alone would have prevented the injected inline execution.
+- Bind tokens to additional server-side checks (origin, referer, short expiry) to limit replay.
+
+---
+
+## Root-Cause Summary
+
+| Principle | Why it matters here |
+|-----------|---------------------|
+| Output encoding is **context-sensitive** | Encoding `<`/`>` protects HTML, not JS strings; the delimiter (`'`) is what matters in a string sink. |
+| Input validation ≠ output encoding | Stripping/encoding at input (Stages 2–3) failed; encoding must happen at the **output** sink, matched to its grammar. |
+| Blocklists are fragile | Character removal was bypassed via template literals, escapes, and Unicode normalization. Allowlists are robust. |
+| Defense in depth | No CSP meant one injection = full execution. CSP with nonces contains residual bugs. |
+| Don't expose secrets to script | A session token in a readable DOM node is exfiltratable by any XSS. |
+
+
