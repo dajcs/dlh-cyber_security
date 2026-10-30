@@ -454,6 +454,6 @@ Save and verify:
 ```bash
 echo "b4797b8faa98c8b5fca7634fab070de7" > 2-flag.txt
 git add .
-git commit -m "22-flag.txt"
+git commit -m "2-flag.txt"
 git push
 ```
