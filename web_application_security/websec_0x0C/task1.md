@@ -1,6 +1,81 @@
 
 # Task 1. Reflected XSS - JavaScript Context
 
+## **Task 1 Description**
+
+### 1. Reflected XSS - JavaScript Context
+
+This time your input lands **inside an existing `<script>` block** not in HTML. HTML tags may be entirely irrelevant. You are breaking out of a JavaScript string, not an HTML tag.
+
+This injection pattern is dangerous because many developers encode HTML characters like `<` and `>` but forget that their JavaScript strings are still injectable.
+
+#### Stage URLs
+
+| Stage | URL | What Changes |
+| :--- | :--- | :--- |
+| 1 | `/products/sort?by=TESTINPUT` | No JS filter |
+| 2 | `/products/sort/dynamic?by=TESTINPUT` | Quotes are stripped |
+| 3 | `/products/sort/advanced?by=TESTINPUT` | Strict filter |
+
+#### Mission Objectives
+1. Visit each stage with `by=TESTINPUT123`.
+2. Open DevTools → Sources or View Source and find the inline script containing your marker.
+3. Identify the surrounding JavaScript syntax — is your input inside a string? Which quote character is used?
+4. Close the string, inject a statement, and neutralize the remaining characters.
+5. In Stage 2, study what happens when quote characters are stripped.
+6. In Stage 3, consider whether you can break out of the script block entirely.
+7. Confirm execution in Console and impact in the C2 dashboard before submitting the tracking token.
+
+#### Hints
+* **Stage 1:** `BREAK_OUT` of a JavaScript string using the correct delimiter.
+* **Stage 2:** The server strips quotes. What if you escape the escaping mechanism?
+* **Stage 3:** If string breakout is too constrained, consider closing the `</script>` block and starting fresh.
+* JavaScript `//` comments are your cleanup tool — use them to discard the original trailing characters.
+
+#### Mental Model
+```javascript
+Before your input:  const sortBy = '
+Your input:         TESTINPUT
+After your input:   ';
+
+Payload goal:       '; YOUR_CODE_HERE; //
+Result:             const sortBy = ''; YOUR_CODE_HERE; //';
+```
+If you see a syntax error in Console, you are close. Adjust until the parser is happy.
+
+#### Step-by-Step Field Guide
+1. Start with:
+   ```text
+   /products/sort?by=TESTINPUT123
+   ```
+2. Search for `TESTINPUT123` in the page source.
+3. Copy the few lines around the JavaScript variable where your marker appears.
+4. Write down the exact characters before and after your marker.
+5. Build the payload in three small pieces:
+   ```text
+   close the current string + run your JavaScript + comment out the left overs
+   ```
+6. If the page breaks, read the Console error. JavaScript parser errors usually point close to the broken syntax.
+7. Once a harmless test works, replace it with C2 evidence and the `/products/sort/api/track` request.
+
+**Important:** the parameter name is `by` on all three stages. If you use `sort=...`, the page will load, but your payload will not enter the vulnerable variable.
+
+#### Verification Checklist
+- [ ] DevTools → Sources shows your payload inside the script block
+- [ ] Console has no syntax errors after injection
+- [ ] C2 shows token or storage evidence
+- [ ] Stage 3 returns the flag from `/products/sort/api/track`
+
+#### Repo:
+* **GitHub repository:** `dlh-cyber_security`
+* **Directory:** `web_application_security/websec_0x0C`
+* **File:** `2-flag.txt`
+
+
+
+## **Solution**
+
+
 
 - Start sandbox `cyber_websec_0x0c`.
 - Start openvpn.

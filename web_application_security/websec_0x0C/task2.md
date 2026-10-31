@@ -1,5 +1,62 @@
 # Task 2. Stored XSS - Product Reviews
 
+## **Task 2 Description**
+
+
+### 2. Stored XSS - Product Reviews
+
+Reflected XSS requires the victim to click a link. Stored XSS is a different threat class: **you inject once, and every future visitor executes your payload automatically.** On a popular product page, that could be millions of executions.
+
+Your task is to poison a product review so that every user who views that page silently loses their data to the C2.
+
+#### Stage URLs
+
+| Stage | URL | What Changes |
+| :--- | :--- | :--- |
+| 1 | `/product/1/reviews` | No filter on review body |
+| 2 | `/product/1/reviews/verified` | Tag filter on review body |
+| 3 | `/product/1/reviews/all` | Hidden: another field is vulnerable |
+
+#### Mission Objectives
+1. Submit a normal review first. Find it in the rendered page.
+2. Submit an HTML injection proof in the review body.
+3. Escalate to JavaScript execution.
+4. **Refresh the page** and confirm the payload persists.
+5. Use the C2 dashboard to show that every page visitor would be affected.
+
+#### Hints
+* **Stage 1:** The review body is your primary injection point.
+* **Stage 2:** `<script>` is removed but which other element can fire JavaScript without user interaction?
+* **Stage 3:** Do not only test the comment field. The review form has more than one field. Inspect all of them.
+* Stored payloads fire on page load. Use `setTimeout` if `tracking-id` hasn't rendered yet.
+
+#### Why This Is Critical
+Stored XSS on a product page means:
+* Every customer viewing that product has their session compromised
+* Every keystroke (credit card entry) is logged
+* Credential harvesting forms appear on a trusted domain
+* The attack continues until someone detects and cleans the database
+
+#### Verification Checklist
+- [ ] Payload is still present after a page refresh
+- [ ] C2 shows credentials, cookies, or keystroke evidence from the review render
+- [ ] You can explain which users would be affected and for how long
+- [ ] Stage 3 returns the flag
+
+#### Repo:
+* **GitHub repository:** `dlh-cyber_security`
+* **Directory:** `web_application_security/websec_0x0C`
+* **File:** `3-flag.txt`
+
+
+
+
+
+## **Solution**
+
+
+
+
 - Start sandbox `cyber_websec_0x0c`.
 - Start openvpn.
 - Put IP address of the sandbox in `/etc/hosts` file.

