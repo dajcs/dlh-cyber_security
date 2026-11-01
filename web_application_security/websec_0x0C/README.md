@@ -4,5 +4,6 @@
 ## [Task 1. Reflected XSS - JavaScript Context](task1.md)
 ## [Task 2. Stored XSS - Product Reviews](task2.md)
 ## [Task 3. Stored XSS - User Profile](task3.md)
+## [Task 4. Stored XSS - Markdown Editor](task4.md)
 
 ## [Security Report](./SECURITY_REPORT.md)

