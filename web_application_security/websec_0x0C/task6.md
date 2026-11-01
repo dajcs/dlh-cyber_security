@@ -645,7 +645,7 @@ We also have independent C2 evidence: HTTP `200 OK` and the `POSTMESSAGE_STAGE3_
 
 
 ```bash
-echo "FLAG{2621d9b68d485bb1d0d9ad2726ecf39d}" > 7-flag.txt
+echo "2621d9b68d485bb1d0d9ad2726ecf39d" > 7-flag.txt
 git add .
 git commit -m "7-flag.txt"
 git push
