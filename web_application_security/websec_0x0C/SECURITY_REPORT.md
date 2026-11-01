@@ -2453,3 +2453,53 @@ FLAG{2621d9b68d485bb1d0d9ad2726ecf39d}
 ```
 
 **Central lesson:** A `postMessage` handler must authenticate the sender, validate the message schema, and render untrusted data safely. Checking message shape or removing selected HTML patterns is insufficient while unsanitized content still reaches `innerHTML`.
+
+
+
+
+
+---
+
+
+
+# Executive Summary
+
+**Target:** `http://web0x0c.hbtn` (NexusShop)
+**Assessment Date:** 28 October–1 November 2026
+**Scope:** XSS assessment of seven NexusShop lab exercises (Tasks 0–6), covering reflected, stored, and DOM-based vectors, their three-stage variants, and designated lab tracking/C2 endpoints.
+**Overall Risk:** **High**. Several findings present potentially critical consequences, but the evidence does not justify labeling every finding Critical.
+
+A penetration test of the NexusShop e-commerce lab identified **six feature areas with demonstrated JavaScript execution through XSS**: search, product reviews, user profiles, Markdown product descriptions, URL-fragment navigation, and cart `postMessage` handling. The product-sort exercise (Task 1) revealed unsafe JavaScript-context handling concerns, but the available record does not conclusively demonstrate execution of an injected payload. **All seven task flags (Tasks 0–6) were captured**, although some were obtained by submitting an exposed tracking token directly rather than through a successful XSS payload.
+
+The recurring root cause is failure to maintain the boundary between untrusted data and executable browser content. Reflected search parameters, stored review/profile descriptions, Markdown-generated HTML, URL fragments, and window messages were inserted into HTML or JavaScript contexts without sufficient contextual protection. Restrictive stages frequently relied on denylist filters that removed `<script>` tags or common event attributes while leaving alternative execution paths intact. Confirmed effects include JavaScript execution, persistence after reload in stored-XSS cases, requests to the designated lab C2, and successful tracking-token callbacks. **Actual theft of usable session cookies, credentials, payment details, or keystrokes was not demonstrated** and should be treated as a potential impact, not an observed outcome.
+
+### Flags Captured
+
+| Task | Flag | Vulnerability / Observed Outcome |
+|------|------|----------------------------------|
+| **0** | `FLAG{5a492ce1de7b835a9e370f8a25a394cd}` | Reflected XSS: search query, including filtered and SVG event-handler bypasses. Script execution confirmed. |
+| **1** | `FLAG{b4797b8faa98c8b5fca7634fab070de7}` | Product sort: user-controlled value in JavaScript context. Flag captured via tracking-token submission; injected-script execution not conclusively verified. |
+| **2** | `FLAG{3813fad2d10b442e2fd23a089f3419fb}` | Stored XSS: product reviews, including vulnerable author-name field in Stage 3. Toolkit-triggered tracking and C2 token evidence recorded. |
+| **3** | `FLAG{dde3e144519a50db0432f0422cf8d85e}` | Stored XSS: user profile `bio` and `username` rendered through `innerHTML`. Stage 3 toolkit payload returned the flag. |
+| **4** | `FLAG{d4b938b857e1527252b213ae3ba6f364}` | Stored XSS: Markdown editor, confirmed in Stages 1–2. Strict Stage 3 sanitizer showed inconsistent URL handling, but no XSS execution was proven there; flag retrieved by direct tracking call. |
+| **5** | `FLAG{f10480356860a010a1f2c403cf62ee41}` | DOM XSS: `location.hash` into `innerHTML`. Stage 3 `javascript:` link bypass, C2 marker, and XSS-triggered flag callback confirmed. |
+| **6** | `FLAG{2621d9b68d485bb1d0d9ad2726ecf39d}` | DOM XSS: cart `postMessage` content into `innerHTML`. Stage 3 widget-shaped message, C2 marker, and XSS-triggered flag callback confirmed. |
+
+### Key Security Findings
+
+| Attack class | Affected application features | Main weakness |
+|--------------|-------------------------------|---------------|
+| **Reflected XSS** | Search; product-sort JavaScript context under investigation | Context-inappropriate encoding and input reflection into browser-rendered content |
+| **Stored XSS** | Product reviews, user profiles, Markdown editor | Persisted HTML/event handlers interpreted as executable markup; inconsistent field and stage sanitization |
+| **DOM-based XSS** | Product URL fragments, cart `postMessage` widget | Attacker-controlled browser data assigned to `innerHTML`; regex filters and inadequate message trust validation |
+
+**Exposure and limitations:** The review and profile tests demonstrated persistence after reload. Task 4's confirmed XSS occurred in the admin Live Preview; the modified description was not observed on the public product page. Task 5 Stage 3 and Task 6 Stage 3 required a user click on an injected `javascript:` link. For Task 6, messages were sent from the same-page Console; a separate cross-origin sender was not tested, although the listener lacked an origin check. C2 receipts in Tasks 5 and 6 contained synthetic proof markers, not stolen cookies. The sandbox flags are challenge-completion evidence and should not be represented as proof of real-world account takeover.
+
+### Prioritized Remediation
+
+1. **Eliminate unsafe output sinks.** Use `textContent` for plain-text values; apply context-specific encoding for HTML, attributes, JavaScript, and URLs. Avoid rendering user content with unchecked `innerHTML` or Jinja2 `|safe`.
+2. **Replace regex denylists with robust sanitization.** Where rich text or Markdown-rendered HTML is necessary, use a maintained, allowlist-based sanitizer that rejects event attributes, executable elements, and dangerous URL schemes after canonicalization.
+3. **Harden client-side trust boundaries.** Restrict product fragment values to approved section identifiers. For `postMessage`, verify `event.origin` and, where relevant, `event.source`; validate a strict message schema before handling content.
+4. **Add defense in depth and regression coverage.** Enforce a restrictive Content Security Policy without `unsafe-inline`, minimize JavaScript-readable secrets, and test all affected stages against HTML, event-handler, SVG, `javascript:` URL, stored-content, and cross-window message payloads.
+
+**Conclusion:** NexusShop exhibits a systemic XSS control weakness rather than a single isolated bug. The highest-value corrective action is to make every transition from untrusted input to browser-rendered output safe by construction. The seven captured flags confirm completion of Tasks 0–6, while the distinctions above preserve an accurate account of which exploit paths and impacts were actually demonstrated.
