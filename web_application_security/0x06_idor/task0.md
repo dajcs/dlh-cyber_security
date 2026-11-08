@@ -1,9 +1,11 @@
 
 # Task 0. Uncovering User IDs
 
+## **Task Description**
+
+
 ## Navigating the IDOR Waters through A Banking Adventure 🏦!
 
-## **Task Description**
 
 **Warmning up..**
 
@@ -401,9 +403,6 @@ We found:
 
 CyberBank accepted Linda's `contact_id` as a customer identifier and returned her profile while we were authenticated as Yosri Musk. The endpoint did not enforce the necessary object-level authorization.
 
-### Your next action
-
-From the root of your `dlh-cyber_security` repository, execute:
 
 ```bash
 echo '1871c80b1bc83b3b6f45582d53e5a840' > 0-flag.txt
