@@ -33,7 +33,19 @@ Useful instructions:
 - File: `2-flag.txt`
 
 
+
+
 ## **Solution**
+
+
+
+- Start sandbox `cyber_websec_0x08`.
+- Start openvpn.
+- Put IP address of the sandbox in `/etc/hosts` file.
+
+```bash
+echo "10.42.254.214 web0x08.hbtn" | sudo tee -a /etc/hosts
+```
 
 
 ## Task 2, Step 1: Test the SSRF protection
