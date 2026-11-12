@@ -4,7 +4,7 @@
 
 Your initial objective entails identifying the vulnerable endpoint and securing the flag located at /etc/0-flag.txt.
 
-Target Machine: Cyber - WebSec 0x07
+Target Machine: Cyber - WebSec 0x07 \
 Main Endpoint: http://web0x07.hbtn/task0/list_file
 
 Useful instructions:

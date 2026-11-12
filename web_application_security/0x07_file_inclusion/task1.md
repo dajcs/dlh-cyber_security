@@ -4,7 +4,7 @@
 
 Your initial objective entails identifying the vulnerable endpoint and securing the flag located at /tmp/secure_storage/1-flag.txt.
 
-Target Machine: Cyber - WebSec 0x07
+Target Machine: Cyber - WebSec 0x07 \
 Main Endpoint: http://web0x07.hbtn/task1/list_file
 
 Useful instructions:
@@ -39,8 +39,6 @@ ping -c 2 web0x07.hbtn
 ## Task 1: Another filter won't help
 
 Objective: Retrieve `/tmp/secure_storage/1-flag.txt`.
-
-We'll follow the same approach as Task 0: one command at a time, analyzing each response before proceeding.
 
 Since Task 1 mentions an additional filter and alternative download endpoints, we'll first inspect the HTML for clues about how file retrieval is implemented.
 
