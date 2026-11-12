@@ -16,8 +16,8 @@ Useful instructions:
 
 Repo:
 
-GitHub repository: dlh-cyber_security
-Directory: web_application_security/0x07_file_inclusion
+GitHub repository: dlh-cyber_security \
+Directory: web_application_security/0x07_file_inclusion \
 File: 0-flag.txt
 
 
