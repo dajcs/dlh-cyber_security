@@ -6,4 +6,5 @@
 ## [Task 1. Inject fun, reveal hidden secrets!](task1.md)
 ## [Task 2. Hack, laugh, uncover, win!](task2.md)
 ## [Task 3. Admins wary. Flag hunt on!](task3.md)
+## [Task 4. Map vulnerabilities, find hidden flags!](task4.md)
 
