@@ -279,3 +279,35 @@ Expected:
 
 
 > **One interesting distinction:** Despite the exercise being called *Buffer overflow*, the operation we're implementing is actually process memory manipulation. We're using the operating system's process-memory interface to modify another process's heap, without exploiting a buffer overflow vulnerability in the C program itself.
+
+
+## Task 1. Buffer Overflow Attack Report!
+
+Buffer overflows occur when a program attempts to write more data to a buffer than it can hold, potentially overwriting adjacent memory locations. This can be exploited by attackers to gain unauthorized access to systems or execute malicious code.
+
+Report Guidelines:
+Your task is to create a detailed blog post that covers various aspects of buffer overflow.
+
+Methodology:
+
+Define buffer overflows and their significance in computer security and briefly describe the potential consequences of buffer overflow attacks on systems and data.
+Explain how buffer overflows occur, outlining the concept of overflowing data buffers and potential memory corruption.
+Provide a simplified example of how an attacker might exploit a buffer overflow vulnerability.
+Discuss the historical significance of buffer overflow attacks, citing real-world examples like the Morris Worm or Heartbleed bug.
+Describe practical methods that can be used to reduce the risk of buffer overflow vulnerabilities in software
+
+Submission Instructions:
+
+Submit your report in a format suitable for sharing, create your report in Google Docs, ensuring it is well-organized and follows the guidelines provided.
+Upon completion, adjust the sharing settings to Anyone with the link can view.
+Submit the link to your report as part of your project completion.
+Your posts should have examples and at least one picture, at the top. Publish your blog post on Medium and and share it at least LinkedIn.
+Please, remember that these blogs must be written in English to further your technical ability in a variety of settings.
+This task challenges you to delve into the world of buffer overflow attacks, understand their mechanisms and implications, and explore methods for safeguarding systems from such vulnerabilities.
+
+Repo:
+
+- GitHub repository: `dlh-cyber_security`
+- Directory: `linux_security/0x04_buffer_overflow`
+- File: `buffer_overflow_attack_report.md`
+
