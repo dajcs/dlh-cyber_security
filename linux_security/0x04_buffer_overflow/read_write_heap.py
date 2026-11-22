@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Find and replace one NUL-terminated ASCII string in a process's heap."""
+"""
+read_write_heap.py - finds a string in the heap of a running process
+and replaces it with another string of the same length.
+
+Usage: read_write_heap.py pid search_string replace_string
+"""
 
 import os
 import sys
