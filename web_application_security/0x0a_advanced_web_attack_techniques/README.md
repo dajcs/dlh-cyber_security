@@ -19,4 +19,5 @@
 
 ## [Task 0. Advanced XSS Challenge - Photo Gallery Exploitation](./task0.md)
 ## [Task 1. Holberton Notes App - SSTI Exploitation Challenge](./task1.md)
+## [Task 2. XSS vulnerability](./task2.md)
 
