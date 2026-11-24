@@ -44,7 +44,7 @@ sudo vim /etc/hosts
 ping -c 2 web0x0a.task0.hbtn
 ```
 
-## **Solution**
+
 
 ### **Task 0: Step 1 - Identify the XSS vulnerability**
 
